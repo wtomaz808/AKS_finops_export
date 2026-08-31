@@ -10,4 +10,5 @@ terraform/**/*.tfstate
 terraform/**/*.tfstate.*
 terraform/**/backend.hcl
 terraform/**/*.tfvars
+terraform/**/tfplan
 !terraform/clusters.example.json

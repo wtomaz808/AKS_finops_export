@@ -1,9 +1,10 @@
 terraform {
   required_version = ">= 1.7"
 
-  # Each cluster gets its own state key so 50 clusters can apply concurrently in a CI
-  # matrix without lock contention, e.g. key = "cost-analysis-export/clusters/${cluster_name}.tfstate"
-  backend "azurerm" {}
+  # Local backend for this POC. For the customer rollout, give each cluster its own
+  # azurerm backend state key so 50 clusters can apply concurrently in a CI matrix
+  # without lock contention, e.g. key = "cost-analysis-export/clusters/${cluster_name}.tfstate"
+  backend "local" {}
 
   required_providers {
     azurerm = {

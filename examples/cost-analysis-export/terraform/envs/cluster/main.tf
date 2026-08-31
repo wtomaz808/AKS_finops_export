@@ -1,10 +1,7 @@
 data "terraform_remote_state" "shared" {
-  backend = "azurerm"
+  backend = "local"
   config = {
-    resource_group_name  = var.tfstate_resource_group_name
-    storage_account_name = var.tfstate_storage_account_name
-    container_name       = var.tfstate_container_name
-    key                  = var.tfstate_shared_key
+    path = var.shared_state_path
   }
 }
 

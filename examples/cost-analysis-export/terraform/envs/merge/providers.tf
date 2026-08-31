@@ -1,7 +1,8 @@
 terraform {
   required_version = ">= 1.7"
 
-  backend "azurerm" {}
+  # Local backend for this POC - use an azurerm backend for the customer rollout.
+  backend "local" {}
 
   required_providers {
     azurerm = {

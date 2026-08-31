@@ -1,10 +1,10 @@
 terraform {
   required_version = ">= 1.7"
 
-  # Populate via `terraform init -backend-config=backend.hcl` (see backend.hcl.example).
-  # Local backend only works for a single-operator POC - use azurerm backend for the
-  # customer rollout so shared state is available to the per-cluster CI matrix jobs.
-  backend "azurerm" {}
+  # Local backend for this POC - state isn't shared across operators/CI here.
+  # For the customer rollout, switch to an azurerm backend (see backend.hcl.example)
+  # so shared state is available to the per-cluster CI matrix jobs.
+  backend "local" {}
 
   required_providers {
     azurerm = {

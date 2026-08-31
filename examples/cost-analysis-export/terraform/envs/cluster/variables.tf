@@ -39,21 +39,9 @@ variable "schedule" {
   default = "10 0 * * *"
 }
 
-# --- Shared-state lookup (must match envs/shared/backend.hcl) ---
-variable "tfstate_resource_group_name" {
-  type = string
-}
-
-variable "tfstate_storage_account_name" {
-  type = string
-}
-
-variable "tfstate_container_name" {
-  type    = string
-  default = "tfstate"
-}
-
-variable "tfstate_shared_key" {
-  type    = string
-  default = "cost-analysis-export/shared.tfstate"
+# --- Shared-state lookup ---
+variable "shared_state_path" {
+  description = "Path to envs/shared's local terraform.tfstate file."
+  type        = string
+  default     = "../shared/terraform.tfstate"
 }

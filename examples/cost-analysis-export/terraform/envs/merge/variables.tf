@@ -36,20 +36,8 @@ variable "schedule" {
   default     = "30 0 * * *"
 }
 
-variable "tfstate_resource_group_name" {
-  type = string
-}
-
-variable "tfstate_storage_account_name" {
-  type = string
-}
-
-variable "tfstate_container_name" {
-  type    = string
-  default = "tfstate"
-}
-
-variable "tfstate_shared_key" {
-  type    = string
-  default = "cost-analysis-export/shared.tfstate"
+variable "shared_state_path" {
+  description = "Path to envs/shared's local terraform.tfstate file."
+  type        = string
+  default     = "../shared/terraform.tfstate"
 }

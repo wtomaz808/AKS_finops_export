@@ -91,9 +91,9 @@ resource "azapi_resource" "cost_export" {
 
   body = {
     properties = {
-      displayName = "aks-cost-export"
       definition = {
-        type = "Usage"
+        type      = "Usage"
+        timeframe = "MonthToDate"
         dataSet = {
           granularity = "Daily"
         }
