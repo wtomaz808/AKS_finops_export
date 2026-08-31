@@ -1,0 +1,6 @@
+# Copy to backend.hcl and fill in, then run:
+#   terraform init -backend-config=backend.hcl
+resource_group_name  = "tfstate-rg"
+storage_account_name = "tfstateaksfinopsxxxx"
+container_name       = "tfstate"
+key                   = "cost-analysis-export/shared.tfstate"

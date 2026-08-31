@@ -1,0 +1,13 @@
+*.exe
+*.db
+*.sqlite
+kube-deploy.yaml
+export.json
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.*
+terraform/**/backend.hcl
+terraform/**/*.tfvars
+!terraform/clusters.example.json

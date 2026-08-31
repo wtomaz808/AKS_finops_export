@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -370,9 +371,12 @@ func (a *App) importAKSData(ctx context.Context) error {
 				continue
 			}
 
-			// Process only AKS export CSV files (including gzipped ones)
-			if !strings.HasPrefix(*blob.Name, a.Config.AzureStorageAKSDataPrefix+"export-") ||
-				(!strings.HasSuffix(*blob.Name, ".csv") && !strings.HasSuffix(*blob.Name, ".csv.gz")) {
+			// Process only AKS export CSV files (including gzipped ones). Matched by file name,
+			// not full path, so per-cluster subfolders (e.g. cost-analysis/<cluster>/export-*.csv)
+			// are picked up when a centralized merge job scans the shared root prefix.
+			base := path.Base(*blob.Name)
+			if !strings.HasPrefix(base, "export-") ||
+				(!strings.HasSuffix(base, ".csv") && !strings.HasSuffix(base, ".csv.gz")) {
 				continue
 			}
 

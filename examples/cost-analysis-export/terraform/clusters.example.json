@@ -1,0 +1,20 @@
+[
+  {
+    "cluster_name": "aks-prod-eastus-01",
+    "subscription_id": "00000000-0000-0000-0000-000000000001",
+    "resource_group": "rg-aks-prod-eastus-01",
+    "identity_shard_index": 0
+  },
+  {
+    "cluster_name": "aks-prod-eastus-02",
+    "subscription_id": "00000000-0000-0000-0000-000000000001",
+    "resource_group": "rg-aks-prod-eastus-02",
+    "identity_shard_index": 0
+  },
+  {
+    "cluster_name": "aks-prod-centralus-01",
+    "subscription_id": "00000000-0000-0000-0000-000000000002",
+    "resource_group": "rg-aks-prod-centralus-01",
+    "identity_shard_index": 1
+  }
+]
