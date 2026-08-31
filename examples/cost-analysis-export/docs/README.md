@@ -37,6 +37,7 @@ for the specific gotchas found along the way).
 | [05-terraform-modules.md](05-terraform-modules.md) | Terraform module structure and design decisions |
 | [06-deployment-guide.md](06-deployment-guide.md) | Step-by-step deployment guide, prerequisites, configuration |
 | [07-operations-and-troubleshooting.md](07-operations-and-troubleshooting.md) | Day-2 operations, monitoring, and troubleshooting playbook |
+| [08-blob-storage-and-reporting.md](08-blob-storage-and-reporting.md) | Detailed blob storage folder structure, and per-cluster vs. fleet-wide reporting granularity |
 
 ## Quick facts
 
