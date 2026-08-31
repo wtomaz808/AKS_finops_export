@@ -29,9 +29,16 @@ variable "namespace" {
   default     = "cost-analysis"
 }
 
+variable "manage_namespace" {
+  description = "Whether this module instance creates the namespace. Set false when another instance (e.g. an export job) on the same physical cluster already manages it."
+  type        = bool
+  default     = true
+}
+
 variable "service_account_name" {
-  type    = string
-  default = "cost-analysis-sa"
+  description = "Defaults to cost-analysis-<operation_mode>-sa if unset, so export/merge jobs on the same cluster get distinct ServiceAccounts and federated credentials."
+  type        = string
+  default     = null
 }
 
 variable "image" {

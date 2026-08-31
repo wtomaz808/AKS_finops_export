@@ -25,4 +25,8 @@ module "merge" {
   # Merge reads every cluster's prefix under cost-analysis/ - keep the default
   # AZURE_STORAGE_AKS_DATA_PREFIX ("cost-analysis/") rather than a single-cluster one.
   aks_data_prefix = "cost-analysis/"
+
+  # False when the hub cluster is also one of the export clusters managed by envs/cluster
+  # (that state already owns the namespace) - true for a dedicated/standalone hub cluster.
+  manage_namespace = var.hub_shares_cluster_with_export ? false : true
 }

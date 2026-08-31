@@ -21,18 +21,21 @@ locals {
   # "merge"-only jobs never call the in-cluster agent, so they don't need this Service.
   # Guard against creating it twice if export and merge both target the same hub cluster.
   manage_agent_service = var.operation_mode != "merge"
+  # Distinct per operation_mode so export/merge on the same hub cluster get separate
+  # ServiceAccounts and federated credentials instead of colliding on the same name.
+  service_account_name = coalesce(var.service_account_name, "cost-analysis-${var.operation_mode}-sa")
 }
 
 # One federated credential per cluster's OIDC issuer, bound to the shared identity.
 # Default per-identity quota is 20 credentials - shard clusters across identities in the
 # root config if you approach that limit while a quota increase request is pending.
 resource "azurerm_federated_identity_credential" "this" {
-  name                = "cost-analysis-${var.cluster_name}"
+  name                = "cost-analysis-${var.cluster_name}-${var.operation_mode}"
   resource_group_name = split("/", var.identity_id)[4]
   parent_id           = var.identity_id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = var.oidc_issuer_url
-  subject             = "system:serviceaccount:${var.namespace}:${var.service_account_name}"
+  subject             = "system:serviceaccount:${var.namespace}:${local.service_account_name}"
 }
 
 # The AKS Cost Analysis add-on only deploys the cost-analysis-agent pod - it does not
@@ -59,6 +62,10 @@ resource "kubernetes_service" "cost_analysis_agent" {
 }
 
 resource "kubernetes_namespace" "this" {
+  # Skip if another workload instance on the same physical cluster (e.g. the export job,
+  # when the merge hub is also an export cluster) already manages this namespace.
+  count = var.manage_namespace ? 1 : 0
+
   metadata {
     name = var.namespace
     labels = merge(local.common_labels, {
@@ -69,8 +76,8 @@ resource "kubernetes_namespace" "this" {
 
 resource "kubernetes_service_account" "this" {
   metadata {
-    name      = var.service_account_name
-    namespace = kubernetes_namespace.this.metadata[0].name
+    name      = local.service_account_name
+    namespace = var.namespace
     labels = merge(local.common_labels, {
       "azure.workload.identity/use" = "true"
     })
@@ -79,12 +86,14 @@ resource "kubernetes_service_account" "this" {
       "azure.workload.identity/tenant-id" = var.identity_tenant_id
     }
   }
+
+  depends_on = [kubernetes_namespace.this]
 }
 
 resource "kubernetes_cron_job_v1" "this" {
   metadata {
     name      = "aks-cost-analysis-${var.operation_mode}"
-    namespace = kubernetes_namespace.this.metadata[0].name
+    namespace = var.namespace
     labels    = local.common_labels
   }
 

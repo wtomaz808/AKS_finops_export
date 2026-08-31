@@ -36,6 +36,12 @@ variable "schedule" {
   default     = "30 0 * * *"
 }
 
+variable "hub_shares_cluster_with_export" {
+  description = "Set true when hub_cluster_name is also one of envs/cluster's export clusters (that state already owns the cost-analysis namespace there)."
+  type        = bool
+  default     = false
+}
+
 variable "shared_state_path" {
   description = "Path to envs/shared's local terraform.tfstate file."
   type        = string

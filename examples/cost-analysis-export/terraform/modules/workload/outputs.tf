@@ -1,5 +1,5 @@
 output "namespace" {
-  value = kubernetes_namespace.this.metadata[0].name
+  value = var.namespace
 }
 
 output "cron_job_name" {
