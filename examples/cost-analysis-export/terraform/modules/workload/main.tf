@@ -18,6 +18,9 @@ locals {
     "app.kubernetes.io/name"      = "aks-cost-analysis"
     "app.kubernetes.io/component" = var.operation_mode == "merge" ? "cost-merge" : "cost-export"
   }
+  # "merge"-only jobs never call the in-cluster agent, so they don't need this Service.
+  # Guard against creating it twice if export and merge both target the same hub cluster.
+  manage_agent_service = var.operation_mode != "merge"
 }
 
 # One federated credential per cluster's OIDC issuer, bound to the shared identity.
@@ -30,6 +33,29 @@ resource "azurerm_federated_identity_credential" "this" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = var.oidc_issuer_url
   subject             = "system:serviceaccount:${var.namespace}:${var.service_account_name}"
+}
+
+# The AKS Cost Analysis add-on only deploys the cost-analysis-agent pod - it does not
+# create a stable Service, so export/both jobs need this to reach it via COST_ANALYSIS_URL.
+resource "kubernetes_service" "cost_analysis_agent" {
+  count = local.manage_agent_service ? 1 : 0
+
+  metadata {
+    name      = "cost-analysis-agent-svc"
+    namespace = "kube-system"
+  }
+
+  spec {
+    selector = {
+      "app"                            = "cost-analysis-agent"
+      "kubernetes.azure.com/managedby" = "aks"
+    }
+    port {
+      protocol    = "TCP"
+      port        = 9094
+      target_port = 9094
+    }
+  }
 }
 
 resource "kubernetes_namespace" "this" {
