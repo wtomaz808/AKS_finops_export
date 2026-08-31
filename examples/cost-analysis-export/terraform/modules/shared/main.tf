@@ -100,21 +100,21 @@ resource "azapi_resource" "cost_export" {
       }
       deliveryInfo = {
         destination = {
-          resourceId    = azurerm_storage_account.cost_exports.id
-          container     = azurerm_storage_container.cost_exports.name
+          resourceId     = azurerm_storage_account.cost_exports.id
+          container      = azurerm_storage_container.cost_exports.name
           rootFolderPath = "cost-management"
         }
       }
       schedule = {
-        status         = "Active"
-        recurrence     = "Daily"
+        status     = "Active"
+        recurrence = "Daily"
         recurrencePeriod = {
           from = timestamp()
           to   = "2030-12-31T00:00:00Z"
         }
       }
-      format              = "Csv"
-      compressionMode     = "gzip"
+      format                = "Csv"
+      compressionMode       = "gzip"
       dataOverwriteBehavior = "OverwritePreviousReport"
     }
   }

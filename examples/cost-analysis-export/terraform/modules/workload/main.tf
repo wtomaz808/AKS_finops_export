@@ -12,8 +12,8 @@ terraform {
 }
 
 locals {
-  aks_data_prefix   = coalesce(var.aks_data_prefix, "cost-analysis/${var.cluster_name}/")
-  blob_endpoint     = "https://${var.storage_account_name}.blob.${var.storage_suffix}/"
+  aks_data_prefix = coalesce(var.aks_data_prefix, "cost-analysis/${var.cluster_name}/")
+  blob_endpoint   = "https://${var.storage_account_name}.blob.${var.storage_suffix}/"
   common_labels = {
     "app.kubernetes.io/name"      = "aks-cost-analysis"
     "app.kubernetes.io/component" = var.operation_mode == "merge" ? "cost-merge" : "cost-export"

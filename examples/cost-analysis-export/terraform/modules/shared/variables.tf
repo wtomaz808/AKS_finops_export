@@ -48,8 +48,8 @@ variable "identity_count" {
     issuer). Shard clusters across multiple identities until a quota increase is approved,
     e.g. identity_count = 3 for ~17 clusters each.
   EOT
-  type    = number
-  default = 1
+  type        = number
+  default     = 1
 }
 
 variable "tags" {

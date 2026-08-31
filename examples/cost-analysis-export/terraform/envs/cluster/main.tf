@@ -11,11 +11,11 @@ data "terraform_remote_state" "shared" {
 module "export" {
   source = "../../modules/workload"
 
-  cluster_name        = var.cluster_name
-  oidc_issuer_url     = var.oidc_issuer_url
-  identity_id         = data.terraform_remote_state.shared.outputs.identity_ids[var.identity_shard_index]
-  identity_client_id  = data.terraform_remote_state.shared.outputs.identity_client_ids[var.identity_shard_index]
-  identity_tenant_id  = data.terraform_remote_state.shared.outputs.tenant_id
+  cluster_name       = var.cluster_name
+  oidc_issuer_url    = var.oidc_issuer_url
+  identity_id        = data.terraform_remote_state.shared.outputs.identity_ids[var.identity_shard_index]
+  identity_client_id = data.terraform_remote_state.shared.outputs.identity_client_ids[var.identity_shard_index]
+  identity_tenant_id = data.terraform_remote_state.shared.outputs.tenant_id
 
   image          = var.image
   operation_mode = "export"
