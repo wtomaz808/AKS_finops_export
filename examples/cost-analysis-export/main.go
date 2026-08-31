@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
@@ -30,6 +32,7 @@ import (
 type Config struct {
 	Timeout                      time.Duration `env:"EXPORT_TIMEOUT" envDefault:"10m"`
 	CostAnalysisURL              string        `env:"COST_ANALYSIS_URL" envDefault:"http://cost-analysis-agent-svc:9094"`
+	AzureCloud                   string        `env:"AZURE_CLOUD" envDefault:"AzurePublic"`
 	AzureStorageConnectionString string        `env:"AZURE_STORAGE_CONNECTION_STRING"`
 	AzureStorageBlobName         string        `env:"AZURE_STORAGE_BLOB_NAME"`
 	AzureStorageContainerName    string        `env:"AZURE_STORAGE_CONTAINER_NAME"`
@@ -38,6 +41,22 @@ type Config struct {
 	AzureStorageResultFile       string        `env:"AZURE_STORAGE_RESULT_FILE" envDefault:"cost-analysis/result.csv"`
 	SQLiteFilePath               string        `env:"SQLITE_FILE_PATH"`
 	ExportDate                   *time.Time    `env:"EXPORT_DATE" envDefault:""`
+}
+
+// azureCloudConfig maps AZURE_CLOUD values to azcore cloud configurations.
+// Required for Azure Government (and Azure China) since DefaultAzureCredential
+// defaults to the public cloud authority/endpoints.
+func azureCloudConfig(name string) (cloud.Configuration, error) {
+	switch name {
+	case "", "AzurePublic":
+		return cloud.AzurePublic, nil
+	case "AzureGovernment":
+		return cloud.AzureGovernment, nil
+	case "AzureChina":
+		return cloud.AzureChina, nil
+	default:
+		return cloud.Configuration{}, fmt.Errorf("unsupported AZURE_CLOUD value: %s (valid: AzurePublic, AzureGovernment, AzureChina)", name)
+	}
 }
 
 func main() {
@@ -98,13 +117,22 @@ func createBlobClient(cfg Config) (*azblob.Client, error) {
 		return azblob.NewClientFromConnectionString(cfg.AzureStorageConnectionString, nil)
 	}
 
+	cloudCfg, err := azureCloudConfig(cfg.AzureCloud)
+	if err != nil {
+		return nil, err
+	}
+
 	// Otherwise use default credentials (for production)
-	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	credential, err := azidentity.NewDefaultAzureCredential(&azidentity.DefaultAzureCredentialOptions{
+		ClientOptions: azcore.ClientOptions{Cloud: cloudCfg},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("creating default credential: %w", err)
 	}
 
-	return azblob.NewClient(cfg.AzureStorageBlobName, credential, nil)
+	return azblob.NewClient(cfg.AzureStorageBlobName, credential, &azblob.ClientOptions{
+		ClientOptions: azcore.ClientOptions{Cloud: cloudCfg},
+	})
 }
 
 func ConfigureAndProcess(ctx context.Context, operation string) error {
@@ -147,6 +175,9 @@ func (c *Config) Validate() error {
 	}
 	if c.AzureStorageConnectionString == "" && c.AzureStorageBlobName == "" {
 		return errors.New("either AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_BLOB_NAME must be provided")
+	}
+	if _, err := azureCloudConfig(c.AzureCloud); err != nil {
+		return err
 	}
 	if c.Timeout <= 0 {
 		return errors.New("EXPORT_TIMEOUT must be positive")

@@ -79,8 +79,10 @@ spec:
             env:
             - name: COST_ANALYSIS_URL
               value: "http://cost-analysis-agent-svc.kube-system:9094"
+            - name: AZURE_CLOUD
+              value: "PLACEHOLDER_AZURE_CLOUD"
             - name: AZURE_STORAGE_BLOB_NAME
-              value: "https://PLACEHOLDER_STORAGE_ACCOUNT.blob.core.windows.net/"
+              value: "https://PLACEHOLDER_STORAGE_ACCOUNT.blob.PLACEHOLDER_STORAGE_SUFFIX/"
             - name: AZURE_STORAGE_CONTAINER_NAME
               value: "cost-exports"
             - name: AZURE_STORAGE_AKS_DATA_PREFIX

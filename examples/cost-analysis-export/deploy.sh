@@ -32,6 +32,17 @@ fi
 echo "Subscription: $SUBSCRIPTION_ID"
 echo "Resource Group: $RESOURCE_GROUP"
 
+# Resolve endpoints/cloud name from the active az cloud (supports AzureCloud, AzureUSGovernment, AzureChinaCloud)
+ARM_ENDPOINT=$(az cloud show --query endpoints.resourceManager -o tsv)
+STORAGE_SUFFIX=$(az cloud show --query suffixes.storageEndpoint -o tsv)
+AZ_CLOUD_NAME=$(az cloud show --query name -o tsv)
+case "$AZ_CLOUD_NAME" in
+    AzureUSGovernment) SDK_CLOUD="AzureGovernment" ;;
+    AzureChinaCloud)   SDK_CLOUD="AzureChina" ;;
+    *)                 SDK_CLOUD="AzurePublic" ;;
+esac
+echo "Active az cloud: $AZ_CLOUD_NAME (ARM: $ARM_ENDPOINT, storage suffix: $STORAGE_SUFFIX, SDK cloud: $SDK_CLOUD)"
+
 # Get storage account info
 if [ -z "${STORAGE_ACCOUNT:-}" ]; then
     echo -n "Enter storage account name: "
@@ -97,7 +108,7 @@ cat > export.json << EOF
 EOF
 
 az rest --method PUT \
-    --uri "https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.CostManagement/exports/$EXPORT_NAME?api-version=2023-07-01-preview" \
+    --uri "${ARM_ENDPOINT%/}/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.CostManagement/exports/$EXPORT_NAME?api-version=2023-07-01-preview" \
     --body @export.json
 
 rm export.json
@@ -130,9 +141,9 @@ az identity federated-credential create \
 # Create namespace
 kubectl create namespace cost-analysis --dry-run=client -o yaml | kubectl apply -f -
 
-# Update kube.yaml with the Docker image, identity details, and cluster-specific storage path
+# Update kube.yaml with the Docker image, identity details, cloud endpoints, and cluster-specific storage path
 CLUSTER_STORAGE_PREFIX="cost-analysis/$CLUSTER_NAME/"
-sed "s|image: .*|image: $DOCKER_IMAGE|; s|PLACEHOLDER_CLIENT_ID|$CLIENT_ID|g; s|PLACEHOLDER_STORAGE_ACCOUNT|$STORAGE_ACCOUNT|g; s|PLACEHOLDER_TENANT_ID|$TENANT_ID|g; s|cost-analysis/|$CLUSTER_STORAGE_PREFIX|g" kube.yaml > kube-deploy.yaml
+sed "s|image: .*|image: $DOCKER_IMAGE|; s|PLACEHOLDER_CLIENT_ID|$CLIENT_ID|g; s|PLACEHOLDER_STORAGE_ACCOUNT|$STORAGE_ACCOUNT|g; s|PLACEHOLDER_STORAGE_SUFFIX|$STORAGE_SUFFIX|g; s|PLACEHOLDER_AZURE_CLOUD|$SDK_CLOUD|g; s|PLACEHOLDER_TENANT_ID|$TENANT_ID|g; s|cost-analysis/|$CLUSTER_STORAGE_PREFIX|g" kube.yaml > kube-deploy.yaml
 
 # Deploy the cronjob
 kubectl apply -f kube-deploy.yaml
