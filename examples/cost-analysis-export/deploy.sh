@@ -143,7 +143,7 @@ kubectl create namespace cost-analysis --dry-run=client -o yaml | kubectl apply 
 
 # Update kube.yaml with the Docker image, identity details, cloud endpoints, and cluster-specific storage path
 CLUSTER_STORAGE_PREFIX="cost-analysis/$CLUSTER_NAME/"
-sed "s|image: .*|image: $DOCKER_IMAGE|; s|PLACEHOLDER_CLIENT_ID|$CLIENT_ID|g; s|PLACEHOLDER_STORAGE_ACCOUNT|$STORAGE_ACCOUNT|g; s|PLACEHOLDER_STORAGE_SUFFIX|$STORAGE_SUFFIX|g; s|PLACEHOLDER_AZURE_CLOUD|$SDK_CLOUD|g; s|PLACEHOLDER_TENANT_ID|$TENANT_ID|g; s|cost-analysis/|$CLUSTER_STORAGE_PREFIX|g" kube.yaml > kube-deploy.yaml
+sed "s|image: .*|image: $DOCKER_IMAGE|; s|PLACEHOLDER_CLIENT_ID|$CLIENT_ID|g; s|PLACEHOLDER_STORAGE_ACCOUNT|$STORAGE_ACCOUNT|g; s|PLACEHOLDER_STORAGE_SUFFIX|$STORAGE_SUFFIX|g; s|PLACEHOLDER_AZURE_CLOUD|$SDK_CLOUD|g; s|PLACEHOLDER_CLUSTER_NAME|$CLUSTER_NAME|g; s|PLACEHOLDER_TENANT_ID|$TENANT_ID|g; s|cost-analysis/|$CLUSTER_STORAGE_PREFIX|g" kube.yaml > kube-deploy.yaml
 
 # Deploy the cronjob
 kubectl apply -f kube-deploy.yaml

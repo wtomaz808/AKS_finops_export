@@ -149,6 +149,10 @@ resource "kubernetes_cron_job_v1" "this" {
                 value = var.azure_cloud
               }
               env {
+                name  = "CLUSTER_NAME"
+                value = var.cluster_name
+              }
+              env {
                 name  = "AZURE_STORAGE_BLOB_NAME"
                 value = local.blob_endpoint
               }

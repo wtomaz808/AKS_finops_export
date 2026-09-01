@@ -34,6 +34,7 @@ type Config struct {
 	Timeout                      time.Duration `env:"EXPORT_TIMEOUT" envDefault:"10m"`
 	CostAnalysisURL              string        `env:"COST_ANALYSIS_URL" envDefault:"http://cost-analysis-agent-svc:9094"`
 	AzureCloud                   string        `env:"AZURE_CLOUD" envDefault:"AzurePublic"`
+	ClusterName                  string        `env:"CLUSTER_NAME"`
 	AzureStorageConnectionString string        `env:"AZURE_STORAGE_CONNECTION_STRING"`
 	AzureStorageBlobName         string        `env:"AZURE_STORAGE_BLOB_NAME"`
 	AzureStorageContainerName    string        `env:"AZURE_STORAGE_CONTAINER_NAME"`
@@ -235,7 +236,7 @@ func (a *App) Export(ctx context.Context) error {
 	writer := csv.NewWriter(&csvBuffer)
 
 	// Write CSV header
-	if err := writer.Write([]string{"Date", "ID", "Name", "Kind", "Fraction", "SplitBucket", "SplitKey"}); err != nil {
+	if err := writer.Write([]string{"Date", "ClusterName", "ID", "Name", "Kind", "Fraction", "SplitBucket", "SplitKey"}); err != nil {
 		return fmt.Errorf("writing CSV header: %w", err)
 	}
 
@@ -253,6 +254,7 @@ func (a *App) Export(ctx context.Context) error {
 
 			record := []string{
 				startTime.Format(time.DateOnly),
+				a.Config.ClusterName,
 				resource.ID,
 				resource.Name,
 				resource.Kind,
@@ -659,6 +661,33 @@ func (a *App) createTableFromHeader(ctx context.Context, tableName string, heade
 		return fmt.Errorf("creating table: %w", err)
 	}
 
+	// The table may already exist with an older column set (e.g. raw export files written
+	// before a new column was added) - add any columns this header has that the table doesn't,
+	// so files with different (evolving) schemas can be imported together regardless of order.
+	return a.addMissingColumns(ctx, tableName, header)
+}
+
+func (a *App) addMissingColumns(ctx context.Context, tableName string, header []string) error {
+	existing, err := a.getTableColumns(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("getting existing columns: %w", err)
+	}
+
+	existingSet := make(map[string]bool, len(existing))
+	for _, col := range existing {
+		existingSet[col] = true
+	}
+
+	for _, col := range header {
+		if existingSet[col] {
+			continue
+		}
+		alterQuery := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", quoteIdentifier(tableName), quoteIdentifier(col))
+		if _, err := a.DB.ExecContext(ctx, alterQuery); err != nil {
+			return fmt.Errorf("adding column %q: %w", col, err)
+		}
+	}
+
 	return nil
 }
 
@@ -794,16 +823,19 @@ func (a *App) buildJoinQuery(ctx context.Context) (string, error) {
 
 	return fmt.Sprintf(`
 WITH aks_rg AS (
-    SELECT DISTINCT
+    SELECT
         LOWER(SUBSTR(ID, 1,
             (INSTR(ID, '/resourceGroups/') + LENGTH('/resourceGroups/')) +
             INSTR(SUBSTR(ID, INSTR(ID, '/resourceGroups/') + LENGTH('/resourceGroups/')), '/') - 2
         )) AS rg_path,
-        Date
+        Date,
+        MAX(ClusterName) AS ClusterName
     FROM aks_splits
     WHERE ID LIKE '/subscriptions/%%'
+    GROUP BY rg_path, Date
 )
 SELECT
+    COALESCE(r.ClusterName, '__unknown__') AS ClusterName,
     CASE WHEN s.Fraction IS NULL THEN '__unallocated__' ELSE s.Name END AS Name,
     CASE WHEN s.Fraction IS NULL THEN '__unallocated__' ELSE s.Kind END AS Kind,
     CASE WHEN s.Fraction IS NULL THEN '__unallocated__' ELSE s.SplitBucket END AS SplitBucket,

@@ -44,7 +44,10 @@ cost-exports/                                  (blob container)
 - Written by the **export** CronJob, once per cluster, once per day.
 - **Never combined at this stage** — always one file per cluster per day. A 50-cluster
   fleet produces 50 separate files per day here.
-- Columns: `Date, ID, Name, Kind, Fraction, SplitBucket, SplitKey`.
+- Columns: `Date, ClusterName, ID, Name, Kind, Fraction, SplitBucket, SplitKey`.
+  - `ClusterName` — the cluster this file came from, set via the `CLUSTER_NAME` env
+    var (from the Terraform `cluster_name` variable). Carried straight through to
+    `result.csv` by the merge join — see below.
   - `ID` — the full Azure `ResourceId` of the underlying compute/storage/network
     resource (e.g. a VM, disk, or public IP) that cost is being attributed from.
   - `Name` / `Kind` — describe that underlying Azure resource (e.g. a disk name,
@@ -84,9 +87,9 @@ cost-exports/                                  (blob container)
 - Columns: the full Cost Management schema (`resourceGroupName`, `meterCategory`,
   `costInUsd`, `tags`, etc. — see [testdata sample](../testdata/cost-management-export.csv)
   for the complete list) plus the Kubernetes-side columns
-  (`Name, Kind, SplitBucket, Fraction, SplitKey`), with `quantity`/`cost*` columns
-  **already multiplied by `Fraction`** — i.e. real, attributed dollar amounts, not raw
-  Azure Cost Management totals.
+  (`ClusterName, Name, Kind, SplitBucket, Fraction, SplitKey`), with `quantity`/`cost*`
+  columns **already multiplied by `Fraction`** — i.e. real, attributed dollar amounts,
+  not raw Azure Cost Management totals.
 
 ## Direct answer: per-cluster or one monolithic report?
 
@@ -100,30 +103,25 @@ fleet-wide file — not split per cluster.**
 
 ### Can you still get a per-cluster view from that one file?
 
-Partially, but with a real caveat worth flagging before you commit to this for
-reporting: **there is currently no dedicated "cluster name" column** in `result.csv`.
-The only way to identify which cluster a row belongs to today is indirectly:
-- Via `resourceGroupName`, which for AKS node-pool resources follows Azure's own
-  generated pattern `MC_<original-resource-group>_<cluster-name>_<region>` — the
-  cluster name is embedded in that string, but extracting it requires parsing a
-  naming convention rather than reading a clean field (and is ambiguous if the
-  original resource-group or cluster name itself contains underscores).
-- Via the `SplitKey` JSON's `namespace`/`object_name` fields, which identify the
-  Kubernetes workload, but namespaces aren't guaranteed unique across clusters, so
-  this doesn't reliably disambiguate *which cluster* either.
+**Yes — `result.csv` includes a dedicated `ClusterName` column.** The export job now
+writes its own cluster name (`CLUSTER_NAME` env var, set from the Terraform
+`cluster_name`/`hub_cluster_name` variable) as a literal column on every row it
+exports, and the merge join carries it straight through — sourced from the `aks_rg` CTE
+so it's attached even to `__unallocated__` rows (ones with no matching Kubernetes split
+data), not just rows with an actual namespace/workload attribution. Rows whose cluster
+couldn't be determined (e.g. very old export files written before this column existed)
+fall back to `__unknown__` rather than breaking the join.
 
-**Recommended enhancement** (not yet implemented): have the export job write its own
-`cluster_name` (a value it already has, from the `AZURE_STORAGE_AKS_DATA_PREFIX`/
-Terraform `cluster_name` variable) as an explicit column in every row it exports, and
-carry that column through the merge join untouched. That would make `result.csv`
-simultaneously:
-- **One monolithic, fleet-wide report** — the default view, nothing to change.
-- **Filterable/sliceable per cluster** in Power BI/Excel — just filter or group by the
-  new `ClusterName` column — without needing to run merge separately per cluster or
-  maintain 50 separate output files.
+This means `result.csv` is simultaneously:
+- **One monolithic, fleet-wide report** — the default view, nothing extra needed.
+- **Filterable/sliceable per cluster** in Power BI/Excel — just filter or group by
+  `ClusterName` — without needing to run merge separately per cluster or maintain
+  separate output files per cluster.
 
-This is a small, low-risk code change (one new CSV column, threaded through
-`Export` → `aks_splits` table → the join `SELECT`). Want me to implement it?
+**Backward compatibility**: raw export files written before this change (no
+`ClusterName` column) still import fine — the import is header-driven per file, so
+older files simply contribute `NULL` for that column, which the join's
+`COALESCE(r.ClusterName, '__unknown__')` handles gracefully rather than erroring.
 
 ### Alternative if you specifically want separate physical files per cluster
 
@@ -132,5 +130,5 @@ Technically possible by running the merge job once per cluster (scoping
 path each time) — but this isn't the recommended pattern at scale, since it
 reintroduces the redundant-work problem the centralized merge pattern was designed to
 avoid (each per-cluster merge run would re-download and re-import the entire Cost
-Management export again). The `ClusterName`-column approach above gets you the same
-per-cluster breakdown from one efficient, centralized run.
+Management export again). The `ClusterName` column above gets you the same per-cluster
+breakdown from one efficient, centralized run instead.
