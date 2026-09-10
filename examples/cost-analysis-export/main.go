@@ -821,6 +821,8 @@ func (a *App) buildJoinQuery(ctx context.Context) (string, error) {
 	qResID := quoteIdentifier(resourceID)
 	qDate := quoteIdentifier(dateCol)
 
+	// rg_path carries no trailing slash, so the join adds one: without that boundary
+	// "MC_rg_aks_eastus" also prefix-matches every resource in "MC_rg_aks_eastus2".
 	return fmt.Sprintf(`
 WITH aks_rg AS (
     SELECT
@@ -831,7 +833,7 @@ WITH aks_rg AS (
         Date,
         MAX(ClusterName) AS ClusterName
     FROM aks_splits
-    WHERE ID LIKE '/subscriptions/%%'
+    WHERE ID LIKE '/subscriptions/%%/resourceGroups/%%/%%'
     GROUP BY rg_path, Date
 )
 SELECT
@@ -843,7 +845,7 @@ SELECT
     COALESCE(s.SplitKey, '{}') AS SplitKey,
     %s
 FROM cost_management c
-INNER JOIN aks_rg r ON LOWER(c.%s) LIKE r.rg_path || '%%' AND c.%s = r.Date
+INNER JOIN aks_rg r ON LOWER(c.%s) LIKE r.rg_path || '/%%' AND c.%s = r.Date
 LEFT JOIN aks_splits s ON LOWER(s.ID) = LOWER(c.%s) AND c.%s = s.Date
 `, strings.Join(colExprs, ",\n    "), qResID, qDate, qResID, qDate), nil
 }
