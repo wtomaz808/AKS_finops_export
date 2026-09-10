@@ -23,7 +23,7 @@ nothing to rotate.
 
 This documentation set was written after building, deploying, and validating the
 solution end-to-end in a real Azure Government subscription (see
-[Deployment guide](06-deployment-guide.md) and [Operations & troubleshooting](07-operations-and-troubleshooting.md)
+[Terraform deployment guide](06-terraform-deployment-guide.md) and [Operations & troubleshooting](07-operations-and-troubleshooting.md)
 for the specific gotchas found along the way).
 
 ## Contents
@@ -35,9 +35,20 @@ for the specific gotchas found along the way).
 | [03-permissions-and-rbac.md](03-permissions-and-rbac.md) | Managed identity permissions and their limitations, AKS RBAC needs |
 | [04-aks-configuration.md](04-aks-configuration.md) | AKS-specific settings: containers, CronJobs, Services, security context |
 | [05-terraform-modules.md](05-terraform-modules.md) | Terraform module structure and design decisions |
-| [06-deployment-guide.md](06-deployment-guide.md) | Step-by-step deployment guide, prerequisites, configuration |
-| [07-operations-and-troubleshooting.md](07-operations-and-troubleshooting.md) | Day-2 operations, monitoring, and troubleshooting playbook |
+| [06-terraform-deployment-guide.md](06-terraform-deployment-guide.md) | Step-by-step deployment with the Terraform scaffold — the recommended path for a fleet |
+| [07-operations-and-troubleshooting.md](07-operations-and-troubleshooting.md) | Day-2 operations, running CronJobs manually, downloading reports, fleet scale, and the troubleshooting playbook |
 | [08-blob-storage-and-reporting.md](08-blob-storage-and-reporting.md) | Detailed blob storage folder structure, and per-cluster vs. fleet-wide reporting granularity |
+| [09-multi-cluster-data-collection.md](09-multi-cluster-data-collection.md) | How data is collected across clusters, subscriptions, and resource groups — and why no cross-cluster connectivity is needed |
+| [10-manual-deployment-guide.md](10-manual-deployment-guide.md) | Deploying the same solution with only the Azure portal, Azure CLI, and `kubectl` |
+
+## Choosing a deployment path
+
+Both paths create identical Azure and Kubernetes resources — pick one.
+
+| Path | Use when |
+|---|---|
+| [Terraform](06-terraform-deployment-guide.md) | Deploying more than a couple of clusters, or you need repeatable, reviewable, destroyable infrastructure |
+| [Manual (portal and CLI)](10-manual-deployment-guide.md) | Terraform isn't available or approved, you're running a proof of concept, or you want to see exactly what the modules create |
 
 ## Quick facts
 
