@@ -40,6 +40,7 @@ for the specific gotchas found along the way).
 | [08-blob-storage-and-reporting.md](08-blob-storage-and-reporting.md) | Detailed blob storage folder structure, and per-cluster vs. fleet-wide reporting granularity |
 | [09-multi-cluster-data-collection.md](09-multi-cluster-data-collection.md) | How data is collected across clusters, subscriptions, and resource groups — and why no cross-cluster connectivity is needed |
 | [10-manual-deployment-guide.md](10-manual-deployment-guide.md) | Deploying the same solution with only the Azure portal, Azure CLI, and `kubectl` |
+| [11-exported-data-next-steps.md](11-exported-data-next-steps.md) | FinOps and Power BI handoff, data modeling, quality checks, retention, and production-readiness decisions |
 
 ## Choosing a deployment path
 
