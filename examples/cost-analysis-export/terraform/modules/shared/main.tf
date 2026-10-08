@@ -11,6 +11,14 @@ terraform {
   }
 }
 
+locals {
+  create_storage_account = var.existing_storage_account_resource_group_name == null
+
+  storage_account_id = local.create_storage_account ? azurerm_storage_account.cost_exports[0].id : data.azurerm_storage_account.existing[0].id
+  storage_account_nm = local.create_storage_account ? azurerm_storage_account.cost_exports[0].name : data.azurerm_storage_account.existing[0].name
+  blob_endpoint      = local.create_storage_account ? azurerm_storage_account.cost_exports[0].primary_blob_endpoint : data.azurerm_storage_account.existing[0].primary_blob_endpoint
+}
+
 resource "azurerm_resource_group" "shared" {
   name     = var.resource_group_name
   location = var.location
@@ -18,6 +26,7 @@ resource "azurerm_resource_group" "shared" {
 }
 
 resource "azurerm_storage_account" "cost_exports" {
+  count                    = local.create_storage_account ? 1 : 0
   name                     = var.storage_account_name
   resource_group_name      = azurerm_resource_group.shared.name
   location                 = azurerm_resource_group.shared.location
@@ -27,15 +36,25 @@ resource "azurerm_storage_account" "cost_exports" {
   tags                     = var.tags
 }
 
+# Reuse a storage account that already exists (for example, one owned by the shared
+# services team) instead of creating one.
+data "azurerm_storage_account" "existing" {
+  count               = local.create_storage_account ? 0 : 1
+  name                = var.storage_account_name
+  resource_group_name = var.existing_storage_account_resource_group_name
+}
+
 resource "azurerm_storage_container" "cost_exports" {
   name                  = var.storage_container_name
-  storage_account_name  = azurerm_storage_account.cost_exports.name
+  storage_account_name  = local.storage_account_nm
   container_access_type = "private"
 }
 
 # Expire raw per-cluster daily exports; result.csv (merged output) is left alone.
+# A storage account has one management policy, and this resource replaces all of its rules.
 resource "azurerm_storage_management_policy" "cost_exports" {
-  storage_account_id = azurerm_storage_account.cost_exports.id
+  count              = var.manage_lifecycle_policy ? 1 : 0
+  storage_account_id = local.storage_account_id
 
   rule {
     name    = "expire-raw-aks-exports"
@@ -77,7 +96,7 @@ resource "azurerm_user_assigned_identity" "cost_analysis" {
 
 resource "azurerm_role_assignment" "storage_blob_data_contributor" {
   count                = var.identity_count
-  scope                = azurerm_storage_account.cost_exports.id
+  scope                = local.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_user_assigned_identity.cost_analysis[count.index].principal_id
 }
@@ -100,7 +119,7 @@ resource "azapi_resource" "cost_export" {
       }
       deliveryInfo = {
         destination = {
-          resourceId     = azurerm_storage_account.cost_exports.id
+          resourceId     = local.storage_account_id
           container      = azurerm_storage_container.cost_exports.name
           rootFolderPath = "cost-management"
         }

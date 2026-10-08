@@ -1,9 +1,9 @@
 output "storage_account_name" {
-  value = azurerm_storage_account.cost_exports.name
+  value = local.storage_account_nm
 }
 
 output "storage_account_id" {
-  value = azurerm_storage_account.cost_exports.id
+  value = local.storage_account_id
 }
 
 output "storage_container_name" {
@@ -12,7 +12,7 @@ output "storage_container_name" {
 
 output "storage_suffix" {
   description = "Blob DNS suffix for the active azurerm environment (e.g. core.usgovcloudapi.net)."
-  value       = trimsuffix(split(".blob.", azurerm_storage_account.cost_exports.primary_blob_endpoint)[1], "/")
+  value       = trimsuffix(split(".blob.", local.blob_endpoint)[1], "/")
 }
 
 output "identity_client_ids" {

@@ -1,8 +1,11 @@
 # Cluster deployments
 
-Each folder contains the export-only Kubernetes manifest for one AKS cluster. The
-shared storage account, managed identity, Azure Container Registry, Cost Management
-export, and centralized merge job are not recreated when another cluster is added.
+Each folder contains the export-only Kubernetes manifest for one AKS cluster.
+`example-cluster/kube.yaml` is a template: copy the folder, rename it to the cluster
+name, and replace every `<placeholder>` (identity client ID, tenant ID, image, cluster
+name, and storage account name). The shared storage account, managed identity, Cost
+Management export, and centralized merge job are not recreated when another cluster is
+added. The container registry is provided by the AKS environment build.
 
 Before applying a cluster manifest:
 

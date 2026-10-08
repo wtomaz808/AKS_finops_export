@@ -61,7 +61,9 @@ az account show --query "{sub:name, id:id, tenant:tenantId}" -o table
 
 The `azure_environment` Terraform variable must agree with the cloud you selected here.
 Use `usgovernment` for Azure Government or `public` for Azure public cloud. A mismatch
-produces confusing authentication errors rather than a clear failure.
+produces confusing authentication errors rather than a clear failure. Each root module
+also takes `tenant_id` and `subscription_id`, so Terraform deploys to the subscription
+you name rather than whichever one `az account set` selected.
 
 ### Azure permissions
 
@@ -124,7 +126,7 @@ Record the full image reference — you'll set it as the `image` variable in ste
 
 ```powershell
 az acr show -n <acr-name> --query loginServer -o tsv
-# e.g. acrcostexportspoc.azurecr.us  ->  acrcostexportspoc.azurecr.us/aks-cost-export:latest
+# e.g. <acr-name>.azurecr.us  ->  <acr-name>.azurecr.us/aks-cost-export:latest
 ```
 
 ## Step 2 — Deploy shared infrastructure (`envs/shared`)
@@ -156,13 +158,19 @@ Decide this **before** your first apply. Migrating later is possible but adds wo
 
 ### Step 2.2 — Write `terraform.tfvars`
 
-Create `terraform/envs/shared/terraform.tfvars`:
+Copy `terraform.tfvars.example` to `terraform/envs/shared/terraform.tfvars` and fill it in:
 
 ```hcl
 azure_environment            = "usgovernment"                 # or "public"
+tenant_id                    = "<tenant-id>"
+subscription_id              = "<shared-subscription-id>"     # subscription that hosts the shared resources
 location                     = "usgovvirginia"
 resource_group_name          = "rg-aks-costanalysis-export"
-storage_account_name         = "stcostexportspoc"             # globally unique, 3-24 lowercase alphanumeric
+storage_account_name         = "<storage-account-name>"       # globally unique, 3-24 lowercase alphanumeric
+
+# To reuse an existing storage account instead of creating one, also set:
+# existing_storage_account_resource_group_name = "<its-resource-group>"
+# manage_lifecycle_policy                      = false   # don't replace rules already on the account
 storage_container_name       = "cost-exports"                 # optional, this is the default
 raw_export_retention_days    = 30                             # optional, this is the default
 cost_management_export_scope = "/subscriptions/00000000-0000-0000-0000-000000000000"
@@ -295,15 +303,17 @@ over VPN/ExpressRoute. `az aks command invoke` can't be used to drive Terraform.
 
 ### Step 3.2 — Write `terraform.tfvars`
 
-Create `terraform/envs/cluster/terraform.tfvars`:
+Copy `terraform.tfvars.example` to `terraform/envs/cluster/terraform.tfvars` and fill it in:
 
 ```hcl
 azure_environment    = "usgovernment"
+tenant_id            = "<tenant-id>"
+subscription_id      = "<shared-subscription-id>"   # where envs/shared created the identity, not the cluster's subscription
 cluster_name         = "aks-prod-eastus"
 oidc_issuer_url      = "https://usgovvirginia.oic.prod-aks.azure.us/<tenant-guid>/<cluster-guid>/"
 kube_context         = "aks-prod-eastus"
 kubeconfig_path      = "~/.kube/config"       # optional, this is the default
-image                = "acrcostexportspoc.azurecr.us/aks-cost-export:latest"
+image                = "<acr-name>.azurecr.us/aks-cost-export:latest"
 identity_shard_index = 0
 schedule             = "10 0 * * *"           # optional, this is the default
 shared_state_path    = "../shared/terraform.tfstate"
@@ -380,14 +390,16 @@ subscription don't matter. See
 
 ### Step 4.2 — Write `terraform.tfvars`
 
-Create `terraform/envs/merge/terraform.tfvars`:
+Copy `terraform.tfvars.example` to `terraform/envs/merge/terraform.tfvars` and fill it in:
 
 ```hcl
 azure_environment    = "usgovernment"
+tenant_id            = "<tenant-id>"
+subscription_id      = "<shared-subscription-id>"   # where envs/shared created the identity, not the hub cluster's subscription
 hub_cluster_name     = "aks-prod-eastus"
 oidc_issuer_url      = "https://usgovvirginia.oic.prod-aks.azure.us/<tenant-guid>/<cluster-guid>/"
 kube_context         = "aks-prod-eastus"
-image                = "acrcostexportspoc.azurecr.us/aks-cost-export:latest"
+image                = "<acr-name>.azurecr.us/aks-cost-export:latest"
 identity_shard_index = 0
 schedule             = "30 0 * * *"
 shared_state_path    = "../shared/terraform.tfstate"

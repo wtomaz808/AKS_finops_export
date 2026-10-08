@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored). One copy and one state per cluster.
+
+azure_environment = "usgovernment"
+tenant_id         = "f6bb1cfd-0389-4296-8b9c-58b772006b44"
+
+# Shared-Svc: where envs/shared created the managed identity. Not the cluster's subscription.
+subscription_id = "bcd79275-fb23-4878-a697-bc967daa9100"
+
+cluster_name    = "<cluster-name>"
+oidc_issuer_url = "<az aks show --query oidcIssuerProfile.issuerUrl -o tsv>" # keep the trailing slash
+kube_context    = "<kubectl config current-context>"
+kubeconfig_path = "~/.kube/config"
+
+# Provided by the team that builds the AKS environment and registry.
+image = "<acr-name>.azurecr.us/aks-cost-export:<tag>"
+
+identity_shard_index = 0
+schedule             = "10 0 * * *"
+shared_state_path    = "../shared/terraform.tfstate"

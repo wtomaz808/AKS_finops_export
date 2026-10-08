@@ -28,12 +28,13 @@ the rows.
 
 ## Validated two-cluster baseline
 
-The September 30, 2026 validation generated data for September 29, 2026:
+A validation run in the previous (proof-of-concept) environment generated data for
+September 29, 2026:
 
 | Cluster | Raw allocation rows | Merged billing rows | Sum of `costInUsd` |
 |---|---:|---:|---:|
-| `aks-smiple` | 99 | 123 | USD 135.17 |
-| `aks-backup-demo` | 2 | 11 | USD 179.89 |
+| `<cluster-a>` | 99 | 123 | USD 135.17 |
+| `<cluster-b>` | 2 | 11 | USD 179.89 |
 
 The raw row counts come from the cluster-specific `export-2026-09-29.csv` files. The
 merged row counts and costs come from this equivalent query over `result.csv`:
@@ -52,7 +53,7 @@ $rows |
   }
 ```
 
-`aks-backup-demo` had 2 `idle` rows and 9 `__unallocated__` rows. Confirm that result
+`<cluster-b>` had 2 `idle` rows and 9 `__unallocated__` rows. Confirm that result
 matches the cluster's workload activity. A busy cluster with almost no workload
 allocation needs investigation before its data is used for chargeback.
 

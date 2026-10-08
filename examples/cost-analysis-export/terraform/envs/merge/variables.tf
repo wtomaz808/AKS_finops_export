@@ -3,6 +3,26 @@ variable "azure_environment" {
   default = "usgovernment"
 }
 
+variable "tenant_id" {
+  description = "Microsoft Entra tenant ID. Must match the tenant used for envs/shared."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", var.tenant_id))
+    error_message = "tenant_id must be a GUID."
+  }
+}
+
+variable "subscription_id" {
+  description = "Subscription that hosts the shared managed identity (the same subscription as envs/shared), not the hub cluster's subscription."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", var.subscription_id))
+    error_message = "subscription_id must be a GUID."
+  }
+}
+
 variable "hub_cluster_name" {
   description = "Name of the cluster hosting the centralized merge CronJob (any cluster, or a small dedicated one)."
   type        = string

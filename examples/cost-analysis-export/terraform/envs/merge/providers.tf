@@ -17,7 +17,9 @@ terraform {
 }
 
 provider "azurerm" {
-  environment = var.azure_environment
+  environment     = var.azure_environment
+  tenant_id       = var.tenant_id
+  subscription_id = var.subscription_id
   features {}
 }
 

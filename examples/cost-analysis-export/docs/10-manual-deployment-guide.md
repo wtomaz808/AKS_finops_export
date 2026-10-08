@@ -87,7 +87,7 @@ az group create -n $RG -l $LOC
 | Security → Minimum TLS version | 1.2 |
 
 ```powershell
-$SA = "stcostexportspoc"
+$SA = "<storage-account-name>"
 az storage account create -n $SA -g $RG -l $LOC --sku Standard_LRS --min-tls-version TLS1_2
 ```
 

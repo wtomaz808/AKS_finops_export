@@ -15,8 +15,20 @@ variable "resource_group_name" {
 }
 
 variable "storage_account_name" {
-  description = "Globally-unique storage account name for cost export data (lowercase, no dashes)."
+  description = "Storage account name for cost export data (lowercase, no dashes). Created unless existing_storage_account_resource_group_name is set."
   type        = string
+}
+
+variable "existing_storage_account_resource_group_name" {
+  description = "Resource group of an existing storage account named storage_account_name. When set, Terraform reuses it instead of creating one."
+  type        = string
+  default     = null
+}
+
+variable "manage_lifecycle_policy" {
+  description = "Create the lifecycle rules that expire raw exports. Set false on a shared existing account, because the policy resource replaces any rules already on the account."
+  type        = bool
+  default     = true
 }
 
 variable "storage_container_name" {

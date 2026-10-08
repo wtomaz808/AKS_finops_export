@@ -1,0 +1,39 @@
+# Copy to terraform.tfvars (gitignored) and adjust. Azure Government tenant.
+#
+# Subscriptions in this tenant:
+#   AKS-spoke  80aa9687-5f29-49ae-9eab-cbf65028af17
+#   AOAI       d7143dff-9b42-432b-8137-7fd03a789efd
+#   DEV        dfd1f14c-0279-48b9-9b27-3be88e9f4ce1
+#   Hub        47b85599-ec93-487c-b34d-a3c10fa88097
+#   Shared-Svc bcd79275-fb23-4878-a697-bc967daa9100
+
+azure_environment = "usgovernment"
+tenant_id         = "f6bb1cfd-0389-4296-8b9c-58b772006b44"
+
+# Shared-Svc: hosts the resource group, storage account, and managed identities.
+subscription_id = "bcd79275-fb23-4878-a697-bc967daa9100"
+
+location                  = "usgovvirginia"
+resource_group_name       = "rg-aks-costanalysis-export" # holds the managed identities
+storage_container_name    = "cost-exports"
+raw_export_retention_days = 30
+
+# Existing storage account to reuse (not created by Terraform).
+storage_account_name                         = "stssvcdevd21g"
+existing_storage_account_resource_group_name = "rg-sharedsvc-dev"
+# The lifecycle policy resource replaces every rule already on the account.
+# Keep false on a shared account unless you want Terraform to own its rules.
+manage_lifecycle_policy = false
+
+# Which costs the export contains. A subscription scope sees only that subscription.
+# Use the management group form if clusters span several subscriptions.
+cost_management_export_scope = "/subscriptions/80aa9687-5f29-49ae-9eab-cbf65028af17" # AKS-spoke
+# cost_management_export_scope = "/providers/Microsoft.Management/managementGroups/<mg-name>"
+
+# One identity supports 20 federated credentials. Use ceil(clusters / 20).
+identity_count = 1
+
+tags = {
+  owner   = "finops"
+  purpose = "aks-cost-export"
+}

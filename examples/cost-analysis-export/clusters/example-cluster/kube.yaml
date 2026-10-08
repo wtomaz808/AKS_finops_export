@@ -16,8 +16,8 @@ metadata:
     app.kubernetes.io/component: cost-export
     azure.workload.identity/use: "true"
   annotations:
-    azure.workload.identity/client-id: "358ab7b7-d5b4-4b67-a506-3e95a49fcac6"
-    azure.workload.identity/tenant-id: "5af05be5-b9df-43d4-8897-ec17d3118935"
+    azure.workload.identity/client-id: "<identity-client-id>"
+    azure.workload.identity/tenant-id: "<tenant-id>"
 ---
 apiVersion: v1
 kind: Service
@@ -65,7 +65,7 @@ spec:
               type: RuntimeDefault
           containers:
           - name: cost-analysis-export
-            image: acrcostexportspoc.azurecr.us/aks-cost-export@sha256:5d55510c1d6571925667c8ae6cf3ebd557d11fa449d905cdf4dd2739e41b34fb
+            image: <acr-name>.azurecr.us/aks-cost-export:<tag>
             imagePullPolicy: Always
             args:
             - export
@@ -84,13 +84,13 @@ spec:
             - name: AZURE_CLOUD
               value: "AzureGovernment"
             - name: CLUSTER_NAME
-              value: "aks-backup-demo"
+              value: "<cluster-name>"
             - name: AZURE_STORAGE_BLOB_NAME
-              value: "https://stcostexportspoc.blob.core.usgovcloudapi.net/"
+              value: "https://<storage-account-name>.blob.core.usgovcloudapi.net/"
             - name: AZURE_STORAGE_CONTAINER_NAME
               value: "cost-exports"
             - name: AZURE_STORAGE_AKS_DATA_PREFIX
-              value: "cost-analysis/aks-backup-demo/"
+              value: "cost-analysis/<cluster-name>/"
             - name: AZURE_STORAGE_COST_EXPORT_PREFIX
               value: "cost-management/"
             - name: AZURE_STORAGE_RESULT_FILE

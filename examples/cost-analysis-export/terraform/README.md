@@ -71,3 +71,10 @@ clusters in parallel without state lock contention.
 Set `azure_environment = "usgovernment"` (default) on the `azurerm`/`azapi` providers,
 and `azure_cloud = "AzureGovernment"` on the `workload` module — this must match the
 `AZURE_CLOUD` value the Go app understands (see `../main.go`).
+
+## Tenant and subscription targeting
+
+Every root module requires `tenant_id` and `subscription_id`, so applies don't depend on
+the active `az account`. Use the subscription that hosts the shared resources (the same
+value in all three envs). Each env ships a `terraform.tfvars.example` to copy to
+`terraform.tfvars` (gitignored).
