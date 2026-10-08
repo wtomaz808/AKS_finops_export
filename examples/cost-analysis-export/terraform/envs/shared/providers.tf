@@ -23,6 +23,9 @@ provider "azurerm" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
   features {}
+
+  # Entra auth for blob container operations; needed when shared key access is disabled.
+  storage_use_azuread = var.storage_use_azuread
 }
 
 provider "azapi" {

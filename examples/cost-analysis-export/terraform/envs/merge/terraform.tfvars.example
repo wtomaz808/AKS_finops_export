@@ -12,7 +12,7 @@ kube_context     = "<kubectl config current-context>"
 kubeconfig_path  = "~/.kube/config"
 
 # Provided by the team that builds the AKS environment and registry.
-image = "<acr-name>.azurecr.us/aks-cost-export:<tag>"
+image = "acrssvcdevd21g.azurecr.us/aks-cost-export:<tag>"
 
 identity_shard_index = 0
 schedule             = "30 0 * * *"

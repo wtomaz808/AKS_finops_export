@@ -13,7 +13,7 @@ tenant_id         = "f6bb1cfd-0389-4296-8b9c-58b772006b44"
 # Shared-Svc: hosts the resource group, storage account, and managed identities.
 subscription_id = "bcd79275-fb23-4878-a697-bc967daa9100"
 
-location                  = "usgovvirginia"
+location                  = "usgovarizona" # same region as the AKS clusters and stssvcdevd21g
 resource_group_name       = "rg-aks-costanalysis-export" # holds the managed identities
 storage_container_name    = "cost-exports"
 raw_export_retention_days = 30
@@ -24,6 +24,16 @@ existing_storage_account_resource_group_name = "rg-sharedsvc-dev"
 # The lifecycle policy resource replaces every rule already on the account.
 # Keep false on a shared account unless you want Terraform to own its rules.
 manage_lifecycle_policy = false
+
+# The account already has a blob private endpoint (pe-blob-sharedsvc-dev), so leave these
+# commented out. Only set them to add a second endpoint.
+# private_endpoint_subnet_id = "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<subnet>"
+# private_dns_zone_ids       = ["/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.usgovcloudapi.net"]
+
+# stssvcdevd21g has shared key access disabled, so Terraform must use Entra auth for the
+# container. The deployer needs Storage Blob Data Contributor on the account, and must
+# reach the blob private endpoint (run from inside the network).
+storage_use_azuread = true
 
 # Which costs the export contains. A subscription scope sees only that subscription.
 # Use the management group form if clusters span several subscriptions.

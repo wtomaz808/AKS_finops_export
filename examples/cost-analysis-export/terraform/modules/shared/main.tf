@@ -34,6 +34,40 @@ resource "azurerm_storage_account" "cost_exports" {
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
   tags                     = var.tags
+
+  # Firewall settings apply only to an account Terraform creates. For an existing account,
+  # its owner manages the firewall (see docs/06, "Storage account networking").
+  network_rules {
+    default_action             = var.network_default_action
+    bypass                     = ["AzureServices"]
+    ip_rules                   = var.network_allowed_ip_ranges
+    virtual_network_subnet_ids = var.network_allowed_subnet_ids
+  }
+}
+
+# Optional private endpoint for blob access from a VNet (works for new and existing accounts).
+resource "azurerm_private_endpoint" "blob" {
+  count               = var.private_endpoint_subnet_id == null ? 0 : 1
+  name                = "pe-${local.storage_account_nm}-blob"
+  location            = azurerm_resource_group.shared.location
+  resource_group_name = azurerm_resource_group.shared.name
+  subnet_id           = var.private_endpoint_subnet_id
+  tags                = var.tags
+
+  private_service_connection {
+    name                           = "psc-${local.storage_account_nm}-blob"
+    private_connection_resource_id = local.storage_account_id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  dynamic "private_dns_zone_group" {
+    for_each = length(var.private_dns_zone_ids) > 0 ? [1] : []
+    content {
+      name                 = "blob"
+      private_dns_zone_ids = var.private_dns_zone_ids
+    }
+  }
 }
 
 # Reuse a storage account that already exists (for example, one owned by the shared
@@ -108,6 +142,13 @@ resource "azapi_resource" "cost_export" {
   name      = "aks-cost-export"
   parent_id = var.cost_management_export_scope
 
+  # A storage account with a firewall or VNet rules requires the export to carry an
+  # identity and location. The identity is granted blob access below.
+  location = var.location
+  identity {
+    type = "SystemAssigned"
+  }
+
   body = {
     properties = {
       definition = {
@@ -141,4 +182,12 @@ resource "azapi_resource" "cost_export" {
   lifecycle {
     ignore_changes = [body.properties.schedule.recurrencePeriod.from]
   }
+}
+
+# The export's own identity writes the daily files through the storage firewall's
+# trusted services bypass.
+resource "azurerm_role_assignment" "export_blob_writer" {
+  scope                = local.storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azapi_resource.cost_export.identity[0].principal_id
 }

@@ -1,0 +1,7 @@
+terraform/
+docs/
+clusters/
+testdata/
+.git
+*.md
+kube-deploy.yaml

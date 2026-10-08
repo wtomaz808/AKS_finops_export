@@ -47,6 +47,42 @@ variable "manage_lifecycle_policy" {
   default     = true
 }
 
+variable "network_default_action" {
+  description = "Firewall default action (Allow or Deny) for a storage account Terraform creates. Ignored for an existing account."
+  type        = string
+  default     = "Allow"
+}
+
+variable "network_allowed_ip_ranges" {
+  description = "IPs or CIDR ranges allowed through the firewall of a created account, such as the Terraform runner."
+  type        = list(string)
+  default     = []
+}
+
+variable "network_allowed_subnet_ids" {
+  description = "Subnet IDs (with the Microsoft.Storage service endpoint) allowed through the firewall of a created account."
+  type        = list(string)
+  default     = []
+}
+
+variable "private_endpoint_subnet_id" {
+  description = "Subnet ID for a blob private endpoint on the storage account. Leave null to skip."
+  type        = string
+  default     = null
+}
+
+variable "private_dns_zone_ids" {
+  description = "Private DNS zone IDs for the blob endpoint, such as privatelink.blob.core.usgovcloudapi.net. Leave empty if DNS is handled elsewhere."
+  type        = list(string)
+  default     = []
+}
+
+variable "storage_use_azuread" {
+  description = "Create the blob container with Microsoft Entra authentication instead of account keys. Required when shared key access is disabled on the account. The deployer needs Storage Blob Data Owner or Contributor."
+  type        = bool
+  default     = false
+}
+
 variable "storage_container_name" {
   type    = string
   default = "cost-exports"

@@ -31,6 +31,41 @@ variable "manage_lifecycle_policy" {
   default     = true
 }
 
+variable "network_default_action" {
+  description = "Firewall default action for a storage account Terraform creates (Allow or Deny). Ignored for an existing account. The AzureServices bypass is always on so the Cost Management export can write."
+  type        = string
+  default     = "Allow"
+
+  validation {
+    condition     = contains(["Allow", "Deny"], var.network_default_action)
+    error_message = "network_default_action must be Allow or Deny."
+  }
+}
+
+variable "network_allowed_ip_ranges" {
+  description = "Public IPs or CIDR ranges allowed through the firewall of a created account (for example, the Terraform runner). Ignored for an existing account."
+  type        = list(string)
+  default     = []
+}
+
+variable "network_allowed_subnet_ids" {
+  description = "Subnet IDs allowed through the firewall of a created account. The subnets need the Microsoft.Storage service endpoint. Ignored for an existing account."
+  type        = list(string)
+  default     = []
+}
+
+variable "private_endpoint_subnet_id" {
+  description = "Subnet ID in which to create a blob private endpoint. Leave null to skip. Must be in the same region as the endpoint's resource group location."
+  type        = string
+  default     = null
+}
+
+variable "private_dns_zone_ids" {
+  description = "Private DNS zone IDs for the endpoint (privatelink.blob.core.usgovcloudapi.net in Azure Government). Leave empty if DNS registration is handled elsewhere."
+  type        = list(string)
+  default     = []
+}
+
 variable "storage_container_name" {
   description = "Blob container name for cost exports."
   type        = string

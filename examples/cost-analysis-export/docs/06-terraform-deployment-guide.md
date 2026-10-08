@@ -200,6 +200,46 @@ federated credentials by default, and every cluster consumes one per operation m
 this to the cluster count divided by 20, rounded up. You can raise it later without
 affecting existing clusters.
 
+### Storage account networking
+
+Private networking is optional and off by default. Three situations come up:
+
+- **Existing account (for example, `stssvcdevd21g`).** Its owner manages the firewall.
+  Terraform doesn't change it. Confirm three things before you apply:
+  - The account allows **trusted Azure services** (`bypass = AzureServices`). The Cost
+    Management export writes to the account this way, and fails without it.
+  - The export and merge pods can reach the blob endpoint, through a private endpoint
+    or an allowed network. Each cluster's network needs a route and private DNS
+    resolution for `<account>.blob.core.usgovcloudapi.net`.
+  - The machine running Terraform can reach the blob endpoint too, because Terraform
+    creates the container there.
+- **Private endpoint from this scaffold.** Set `private_endpoint_subnet_id`, and
+  optionally `private_dns_zone_ids` (use `privatelink.blob.core.usgovcloudapi.net` in
+  Azure Government). The endpoint is created in the shared resource group, so the
+  subnet's VNet must be in the same region as `location`.
+- **Account created by Terraform.** `network_default_action`,
+  `network_allowed_ip_ranges`, and `network_allowed_subnet_ids` set its firewall. The
+  `AzureServices` bypass is always on. Use `Deny` with an allowed IP for your runner.
+
+If the account has shared key access disabled, set `storage_use_azuread = true` and
+grant the deployer **Storage Blob Data Contributor** on the account.
+
+**Cost Management export requirements.** The export service validates the destination
+account when it creates the export:
+
+- Shared key access must be **on**. The export fails with "Key-based authentication is
+  currently disabled" otherwise. Runtime jobs still use Entra auth only.
+- A firewalled account must allow **trusted Azure services**, and public network access
+  must be *Enabled from selected networks*. Fully disabled public access blocks the
+  export. VNet peering doesn't help, because the service writes from outside your VNets.
+- The export needs an identity and location in its payload. `modules/shared` sets a
+  system-assigned identity and grants it **Storage Blob Data Contributor** on the account.
+
+**Terraform signs in as the wrong identity.** If you run on an Azure VM that has a managed
+identity, the `azapi` provider can pick it up instead of your `az login` user and return
+`AuthorizationFailed`. Set `ARM_USE_MSI=false` and `ARM_USE_CLI=true` before you run
+Terraform.
+
 ### Step 2.3 — Initialize, plan, and apply
 
 ```powershell
@@ -374,6 +414,8 @@ key = "cost-analysis-export/clusters/${cluster_name}.tfstate"
 
 Separate state per cluster lets many applies run concurrently without lock contention,
 and makes decommissioning a single cluster a clean `terraform destroy` of one state.
+With the local backend, use one workspace per cluster (`terraform workspace new <name>`)
+and quote the var file in PowerShell: `terraform plan "-var-file=<name>.tfvars"`.
 
 ---
 
