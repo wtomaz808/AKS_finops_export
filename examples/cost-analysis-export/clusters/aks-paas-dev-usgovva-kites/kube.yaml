@@ -52,7 +52,7 @@ spec:
               type: RuntimeDefault
           containers:
           - name: cost-analysis-export
-            image: craksprodusgovva.azurecr.us/aks-cost-export:e6d2fa16
+            image: craksprodusgovva.azurecr.us/aks-cost-export:latest
             imagePullPolicy: Always
             args:
             - export
