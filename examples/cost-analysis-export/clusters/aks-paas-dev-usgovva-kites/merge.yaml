@@ -1,0 +1,98 @@
+# Hub merge job. Runs on the hub cluster (aks-paas-dev-usgovva-kites) only.
+# Reads every export-*.csv under cost-analysis/ (all clusters) plus the Cost Management
+# export CSVs under reports/aks-cost-export/, joins them, and writes cost-analysis/result.csv.
+# Apply after kube.yaml (it uses the cost-analysis namespace created there).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cost-analysis-merge-sa
+  namespace: cost-analysis
+  labels:
+    app.kubernetes.io/name: aks-cost-analysis
+    app.kubernetes.io/component: cost-merge
+    azure.workload.identity/use: "true"
+  annotations:
+    azure.workload.identity/client-id: "5ba63e24-763f-4bdd-b7ec-be4670d6a0fe"
+    azure.workload.identity/tenant-id: "071a8389-cee6-448e-9015-ce55e029f82f"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aks-cost-analysis-merge
+  namespace: cost-analysis
+  labels:
+    app.kubernetes.io/name: aks-cost-analysis
+    app.kubernetes.io/component: cost-merge
+spec:
+  # Runs after both clusters' export jobs (00:10).
+  schedule: "30 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          restartPolicy: Never
+          serviceAccountName: cost-analysis-merge-sa
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: cost-analysis-merge
+            image: craksprodusgovva.azurecr.us/aks-cost-export:1.0.0
+            imagePullPolicy: Always
+            args:
+            - merge
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 65534
+              runAsGroup: 65534
+              capabilities:
+                drop:
+                - ALL
+            env:
+            - name: AZURE_CLOUD
+              value: "AzureGovernment"
+            - name: AZURE_STORAGE_BLOB_NAME
+              value: "https://finopshubug4x7ytxror47uu.blob.core.usgovcloudapi.net/"
+            - name: AZURE_STORAGE_CONTAINER_NAME
+              value: "aksexports"
+            # Shared root: picks up cost-analysis/<cluster>/export-*.csv from every cluster.
+            - name: AZURE_STORAGE_AKS_DATA_PREFIX
+              value: "cost-analysis/"
+            # Customer's Cost Management export. Listing is recursive, so the dated
+            # subfolders (e.g. 20260901-20260930/) are included.
+            - name: AZURE_STORAGE_COST_EXPORT_PREFIX
+              value: "reports/aks-cost-export/"
+            - name: AZURE_STORAGE_RESULT_FILE
+              value: "cost-analysis/result.csv"
+            # The Cost Management CSVs total several GB; the default 10m is too short.
+            - name: EXPORT_TIMEOUT
+              value: "60m"
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            resources:
+              requests:
+                memory: "2Gi"
+                cpu: "500m"
+                ephemeral-storage: "16Gi"
+              limits:
+                memory: "4Gi"
+                cpu: "2"
+                ephemeral-storage: "24Gi"
+          volumes:
+          - name: tmp
+            emptyDir:
+              sizeLimit: "24Gi"
