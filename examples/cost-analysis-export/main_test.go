@@ -418,6 +418,37 @@ test-guid,rg,westus,2025-06-18,Virtual Machines,Standard,meter-id,VM,westus,1,10
 	}
 }
 
+func TestLatestPerFolder(t *testing.T) {
+	t0 := time.Date(2026, 10, 9, 20, 0, 0, 0, time.UTC)
+	blobs := []blobInfo{
+		{"reports/x/20261001-20261031/a.csv", t0},
+		{"reports/x/20261001-20261031/b.csv", t0.Add(24 * time.Hour)},
+		{"reports/x/20261001-20261031/c.csv", t0.Add(48 * time.Hour)},
+		{"reports/x/20260901-20260930/old.csv", t0.Add(-720 * time.Hour)},
+		{"reports/x/platform/20261001-20261031/p1.csv", t0},
+		{"reports/x/platform/20261001-20261031/p2.csv", t0.Add(time.Hour)},
+	}
+
+	got := latestPerFolder(blobs)
+
+	var names []string
+	for _, b := range got {
+		names = append(names, b.name)
+	}
+	assert.Equal(t, []string{
+		"reports/x/20260901-20260930/old.csv",
+		"reports/x/20261001-20261031/c.csv",
+		"reports/x/platform/20261001-20261031/p2.csv",
+	}, names)
+
+	assert.Empty(t, latestPerFolder(nil))
+
+	// Equal modified times resolve to the larger name so the result is stable.
+	tied := latestPerFolder([]blobInfo{{"d/a.csv", t0}, {"d/b.csv", t0}})
+	require.Len(t, tied, 1)
+	assert.Equal(t, "d/b.csv", tied[0].name)
+}
+
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string

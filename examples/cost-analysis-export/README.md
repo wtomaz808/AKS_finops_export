@@ -89,6 +89,7 @@ Environment variables (configured via deployment):
 - `COST_ANALYSIS_URL`: Agent endpoint (default: `http://cost-analysis-agent-svc.kube-system:9094`)
 - `AZURE_STORAGE_AKS_DATA_PREFIX`: Storage path for AKS exports (default: `cost-analysis/`)
 - `AZURE_STORAGE_COST_EXPORT_PREFIX`: Storage path for Cost Management exports (default: `cost-management/`)
+- `AZURE_STORAGE_COST_EXPORT_LATEST_ONLY`: Import only the newest Cost Management file in each folder (default: `true`). Month-to-date exports write a new file every run that repeats the whole period, so importing all of them multiplies cost. Set to `false` only for partitioned exports, where one run spans several files.
 - `AZURE_STORAGE_RESULT_FILE`: Path for merged result file (default: `cost-analysis/result.csv`)
 
 **Multi-Cluster Configuration**: To avoid data overwrites between clusters, configure cluster-specific AKS data paths while keeping the result file shared:

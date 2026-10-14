@@ -17,6 +17,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,6 +44,11 @@ type Config struct {
 	AzureStorageResultFile       string        `env:"AZURE_STORAGE_RESULT_FILE" envDefault:"cost-analysis/result.csv"`
 	SQLiteFilePath               string        `env:"SQLITE_FILE_PATH"`
 	ExportDate                   *time.Time    `env:"EXPORT_DATE" envDefault:""`
+
+	// Month-to-date Cost Management exports write a new file each run that repeats the whole
+	// period, so importing every file counts each day's cost once per run. Keep only the newest
+	// file per folder. Set to false for partitioned exports, where one run spans several files.
+	AzureStorageCostExportLatestOnly bool `env:"AZURE_STORAGE_COST_EXPORT_LATEST_ONLY" envDefault:"true"`
 }
 
 // azureCloudConfig maps AZURE_CLOUD values to azcore cloud configurations.
@@ -403,14 +409,39 @@ func (a *App) processAKSBlob(ctx context.Context, blobName string) error {
 	return a.processCSVBlob(ctx, blobName, "aks_splits", "processing AKS blob", "imported AKS data from blob")
 }
 
+// blobInfo is a listed blob's name and last modified time.
+type blobInfo struct {
+	name     string
+	modified time.Time
+}
+
+// latestPerFolder returns the most recently modified blob in each folder, sorted by name.
+// Ties on modified time are broken by the larger name so the result is deterministic.
+func latestPerFolder(blobs []blobInfo) []blobInfo {
+	latest := make(map[string]blobInfo)
+	for _, b := range blobs {
+		dir := path.Dir(b.name)
+		cur, ok := latest[dir]
+		if !ok || b.modified.After(cur.modified) || (b.modified.Equal(cur.modified) && b.name > cur.name) {
+			latest[dir] = b
+		}
+	}
+
+	out := make([]blobInfo, 0, len(latest))
+	for _, b := range latest {
+		out = append(out, b)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
+	return out
+}
+
 func (a *App) importCostManagementData(ctx context.Context) error {
-	// List and process all cost management CSV files
+	// List all cost management CSV files
 	pager := a.BlobClient.NewListBlobsFlatPager(a.Config.AzureStorageContainerName, &azblob.ListBlobsFlatOptions{
 		Prefix: &a.Config.AzureStorageCostExportPrefix,
 	})
 
-	filesProcessed := 0
-
+	var blobs []blobInfo
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
@@ -428,12 +459,27 @@ func (a *App) importCostManagementData(ctx context.Context) error {
 				continue
 			}
 
-			if err := a.processCostManagementBlob(ctx, *blob.Name); err != nil {
-				slog.Error("failed to process cost management blob", "name", *blob.Name, "error", err)
-				continue
+			info := blobInfo{name: *blob.Name}
+			if blob.Properties != nil && blob.Properties.LastModified != nil {
+				info.modified = *blob.Properties.LastModified
 			}
-			filesProcessed++
+			blobs = append(blobs, info)
 		}
+	}
+
+	if a.Config.AzureStorageCostExportLatestOnly {
+		selected := latestPerFolder(blobs)
+		slog.Info("keeping latest cost management file per folder", "listed", len(blobs), "selected", len(selected))
+		blobs = selected
+	}
+
+	filesProcessed := 0
+	for _, b := range blobs {
+		if err := a.processCostManagementBlob(ctx, b.name); err != nil {
+			slog.Error("failed to process cost management blob", "name", b.name, "error", err)
+			continue
+		}
+		filesProcessed++
 	}
 
 	if filesProcessed == 0 {
