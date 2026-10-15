@@ -88,6 +88,101 @@ kubectl logs -n cost-analysis job/export-2
 If `kubectl wait` times out, run `kubectl get pods -n cost-analysis` and
 `kubectl describe pod -n cost-analysis <pod>`, then send me the events.
 
+## Atlas clusters: first export (batch 2)
+
+These six clusters are new to the export. Run one block at a time, from the repo root
+after `git pull origin cx_usecase`. Each block checks the Cost Analysis agent pod, applies
+the cluster's manifest, runs the first job (`export-1`), and prints the log.
+
+Before the log, confirm the agent pod is `Running`. If it's missing, stop and tell me.
+
+### aks-atlas-dev-usgovva-ingest
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-ingest"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-ingest -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+### aks-atlas-dev-usgovva-integration
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-integration"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-integration -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+### aks-atlas-dev-usgovva-play
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-play"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-play -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+### aks-atlas-dev-usgovva-play-unstable
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-play-unstable"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-play-unstable -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+### aks-atlas-dev-usgovva-test
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-test"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-test -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+### aks-atlas-dev-usgovva-vtest
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-vtest"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-vtest -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+A good log ends with `data processing completed successfully` and a
+`path=cost-analysis/<cluster>/export-<date>.csv` line that names the same cluster.
+
 ## Cluster summary
 
 | Cluster | Subscription | Resource group | Role |
@@ -98,6 +193,12 @@ If `kubectl wait` times out, run `kubectl get pods -n cost-analysis` and
 | `aks-atlas-dev-usgovva-devops` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-devops` | Export only |
 | `aks-atlas-dev-usgovva-devtest` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-devtest` | Export only |
 | `aks-atlas-dev-usgovva-ida` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-ida` | Export only |
+| `aks-atlas-dev-usgovva-ingest` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-ingest` | Export only |
+| `aks-atlas-dev-usgovva-integration` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-integration` | Export only |
+| `aks-atlas-dev-usgovva-play` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-play` | Export only |
+| `aks-atlas-dev-usgovva-play-unstable` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-play-unstable` | Export only |
+| `aks-atlas-dev-usgovva-test` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-test` | Export only |
+| `aks-atlas-dev-usgovva-vtest` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-vtest` | Export only |
 
 ## aks-paas-dev-usgovva-kites (hub)
 
