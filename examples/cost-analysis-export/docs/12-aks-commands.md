@@ -24,6 +24,70 @@ If a pod stays `Pending`, run `kubectl describe pod -n cost-analysis <pod>` and 
 events. If `az aks get-credentials` fails, see
 [Troubleshooting](#troubleshooting).
 
+## Atlas clusters: re-run the export now
+
+Copy and paste one block at a time on the kubectl VDI, from the repo root
+(`C:\dsop\aks_export\AKS_finops_export`) after `git pull origin cx_usecase`. Each block
+re-applies the cluster's own manifest (lower CPU request), deletes the earlier test jobs,
+runs a new job, and prints the log. A good log ends with `data processing completed
+successfully` and a `path=cost-analysis/<cluster>/export-<date>.csv` line that names the
+same cluster you are working on.
+
+### aks-atlas-dev-usgovva-analysis
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-analysis"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-analysis -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 export-2 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-2 -n cost-analysis
+kubectl wait --for=condition=complete job/export-2 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-2
+```
+
+### aks-atlas-dev-usgovva-devops
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-devops"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-devops -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 export-2 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-2 -n cost-analysis
+kubectl wait --for=condition=complete job/export-2 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-2
+```
+
+### aks-atlas-dev-usgovva-devtest
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-devtest"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-devtest -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 export-2 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-2 -n cost-analysis
+kubectl wait --for=condition=complete job/export-2 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-2
+```
+
+### aks-atlas-dev-usgovva-ida
+
+```powershell
+$cluster = "aks-atlas-dev-usgovva-ida"
+az aks get-credentials --subscription c98c2229-d604-406d-9746-d163d5d6069a -g rg-atlas-dev-usgovva-aks-ida -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl delete job export-1 export-2 -n cost-analysis --ignore-not-found
+kubectl create job --from=cronjob/aks-cost-analysis-export export-2 -n cost-analysis
+kubectl wait --for=condition=complete job/export-2 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-2
+```
+
+If `kubectl wait` times out, run `kubectl get pods -n cost-analysis` and
+`kubectl describe pod -n cost-analysis <pod>`, then send me the events.
+
 ## Cluster summary
 
 | Cluster | Subscription | Resource group | Role |
