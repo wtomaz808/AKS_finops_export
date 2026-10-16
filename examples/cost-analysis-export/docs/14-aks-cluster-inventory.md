@@ -89,8 +89,10 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
 - **1** IL5 team cluster (`aks-il5-team-dev-ugva-development`) has a dedicated
   manifest prepared and its UAMI granted Storage Blob Data Contributor on the
   `aksexports` container and federated to the export ServiceAccount. Its kube VDI
-  deployment and export test have **not** happened yet. The other four proposed
-  IL5/IL4 team clusters remain untouched.
+  deployment and export test have **not** happened yet: the kube VDI user's first
+  apply was denied by Azure Kubernetes RBAC for the namespace, ServiceAccount,
+  `kube-system` Service, and CronJob. No namespace was created. The other four
+  proposed IL5/IL4 team clusters remain untouched.
 - `aks-datasvc-sbx-usgovva-shared` reports `Failed` provisioning state and should not
   be changed until that state is understood.
 - The current solution uses Cost Analysis, so clusters marked Cost Analysis `Enabled`

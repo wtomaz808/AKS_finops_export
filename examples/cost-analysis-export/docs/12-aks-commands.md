@@ -370,9 +370,15 @@ az cloud set --name AzureUSGovernment
 az login --scope https://management.core.usgovcloudapi.net//.default
 ```
 
-Then copy and paste **this cluster's block only**, one command at a time as with the
-earlier clusters. Check that the agent pod says `Running` before the `kubectl apply`
-command; if it does not, **stop**. If any command fails, stop rather than continuing.
+**Blocked:** The current kube VDI user can get cluster credentials and read the agent,
+but Azure RBAC denies creation of the namespace, ServiceAccount, `kube-system` Service,
+and CronJob. The cluster has Azure RBAC for Kubernetes authorization enabled and local
+accounts disabled. Have a cluster administrator authorize the deployment before
+continuing. Do not use `--admin` or retry the apply without resolving RBAC.
+
+After authorization, copy and paste **one stage at a time**. Check that the agent pod
+says `Running` before applying. PowerShell does not stop on a failed `kubectl` command
+when multiple commands are pasted together, so do **not** paste all stages at once.
 
 ### aks-il5-team-dev-ugva-development
 
@@ -381,7 +387,27 @@ $cluster = "aks-il5-team-dev-ugva-development"
 az aks get-credentials --subscription 8f225e15-db94-4fa5-9f29-0669936b7b8a -g rg-il5-team-dev-ugva-aks-development -n $cluster --overwrite-existing
 if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
 kubectl get pods -n kube-system -l app=cost-analysis-agent
+```
+
+Only after the context and agent are confirmed, apply the manifest:
+
+```powershell
 kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+```
+
+Stop if *any* resource is `Forbidden`. An authorized cluster administrator must create
+the namespace and the `kube-system` Service; Azure Kubernetes Service RBAC Writer
+scoped only to `cost-analysis` does not grant those cluster/system permissions.
+After the apply succeeds, verify its resources:
+
+```powershell
+kubectl get namespace cost-analysis
+kubectl get cronjob aks-cost-analysis-export -n cost-analysis
+```
+
+Only if both exist, run the first export:
+
+```powershell
 kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
 kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
 kubectl logs -n cost-analysis job/export-1
