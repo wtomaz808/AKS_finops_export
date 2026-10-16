@@ -183,6 +183,123 @@ kubectl logs -n cost-analysis job/export-1
 A good log ends with `data processing completed successfully` and a
 `path=cost-analysis/<cluster>/export-<date>.csv` line that names the same cluster.
 
+## Data Services clusters: first export (batch 3)
+
+This batch contains five export-only clusters in the `km-platform-dataservices`
+subscription. The manifests use the existing shared UAMI
+`cost-analysis-identity-0` and the existing storage account; do not create another
+storage account, identity, or merge job.
+
+### Azure-side preparation
+
+Run this on the Azure-capable environment. It discovers each resource group, verifies
+the required AKS features, and creates the per-cluster federated credential. The
+cluster resource groups are discovered rather than guessed from the cluster names.
+
+```powershell
+$subscription = "km-platform-dataservices"
+$identitySubscription = "bcd79275-fb23-4878-a697-bc967daa9100"
+$identityResourceGroup = "rg-aks-costanalysis-export"
+$identityName = "cost-analysis-identity-0"
+$clusters = @(
+  "aks-datasvc-dev-usgovva-argo",
+  "aks-datasvc-dev-usgovva-cyber",
+  "aks-datasvc-dev-usgovva-observability",
+  "aks-datasvc-dev-usgovva-shared",
+  "aks-datasvc-sbx-usgovva-shared"
+)
+
+foreach ($cluster in $clusters) {
+  $resourceGroup = az aks list --subscription $subscription `
+    --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+  if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+    throw "AKS cluster not found: $cluster"
+  }
+
+  az aks show --subscription $subscription -g $resourceGroup -n $cluster `
+    --query "{tier:sku.tier, oidc:oidcIssuerProfile.issuerUrl, workloadIdentity:securityProfile.workloadIdentity.enabled, costAnalysis:costAnalysis.enabled}" -o json
+
+  $issuer = az aks show --subscription $subscription -g $resourceGroup -n $cluster `
+    --query oidcIssuerProfile.issuerUrl -o tsv
+  if ([string]::IsNullOrWhiteSpace($issuer)) { throw "OIDC issuer is not enabled: $cluster" }
+
+  $credentialName = "cost-analysis-$cluster-export"
+  $existing = az identity federated-credential show `
+    --subscription $identitySubscription `
+    --resource-group $identityResourceGroup `
+    --identity-name $identityName `
+    --name $credentialName --query name -o tsv 2>$null
+  if ([string]::IsNullOrWhiteSpace($existing)) {
+    az identity federated-credential create `
+      --subscription $identitySubscription `
+      --resource-group $identityResourceGroup `
+      --identity-name $identityName `
+      --name $credentialName `
+      --issuer $issuer `
+      --subject "system:serviceaccount:cost-analysis:cost-analysis-export-sa" `
+      --audiences api://AzureADTokenExchange
+  } else {
+    Write-Host "Federated credential already exists: $credentialName"
+  }
+}
+```
+
+The script is idempotent for credentials with the expected name. If an existing
+credential has the same name but a different issuer, stop and correct it rather than
+creating a second credential.
+
+### Kube VDI commands
+
+Run on the kube VDI from the repository root after pulling the branch. The loop gets
+each resource group from Azure, switches credentials, verifies the context, confirms
+the Cost Analysis agent, applies only that cluster's manifest, and runs one export.
+
+```powershell
+cd C:\dsop\aks_export\AKS_finops_export
+git pull origin cx_usecase
+az cloud set --name AzureUSGovernment
+az login --scope https://management.core.usgovcloudapi.net//.default
+
+$subscription = "km-platform-dataservices"
+$clusters = @(
+  "aks-datasvc-dev-usgovva-argo",
+  "aks-datasvc-dev-usgovva-cyber",
+  "aks-datasvc-dev-usgovva-observability",
+  "aks-datasvc-dev-usgovva-shared",
+  "aks-datasvc-sbx-usgovva-shared"
+)
+
+foreach ($cluster in $clusters) {
+  $resourceGroup = az aks list --subscription $subscription `
+    --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+  if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+    throw "AKS cluster not found: $cluster"
+  }
+
+  az aks get-credentials --subscription $subscription -g $resourceGroup -n $cluster --overwrite-existing
+  if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context for $cluster" }
+
+  $agent = kubectl get pods -n kube-system -l app=cost-analysis-agent `
+    -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}'
+  if ([string]::IsNullOrWhiteSpace($agent)) { throw "Cost Analysis agent is not Running on $cluster" }
+
+  kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+  kubectl delete job export-1 -n cost-analysis --ignore-not-found
+  kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+  kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+  kubectl logs -n cost-analysis job/export-1
+}
+```
+
+A successful run must end with `data processing completed successfully` and write to
+`cost-analysis/<cluster>/export-<date>.csv`. The five manifests are:
+
+- `clusters/aks-datasvc-dev-usgovva-argo/kube.yaml`
+- `clusters/aks-datasvc-dev-usgovva-cyber/kube.yaml`
+- `clusters/aks-datasvc-dev-usgovva-observability/kube.yaml`
+- `clusters/aks-datasvc-dev-usgovva-shared/kube.yaml`
+- `clusters/aks-datasvc-sbx-usgovva-shared/kube.yaml`
+
 ## Cluster summary
 
 | Cluster | Subscription | Resource group | Role |
@@ -199,6 +316,11 @@ A good log ends with `data processing completed successfully` and a
 | `aks-atlas-dev-usgovva-play-unstable` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-play-unstable` | Export only |
 | `aks-atlas-dev-usgovva-test` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-test` | Export only |
 | `aks-atlas-dev-usgovva-vtest` | `c98c2229-d604-406d-9746-d163d5d6069a` | `rg-atlas-dev-usgovva-aks-vtest` | Export only |
+| `aks-datasvc-dev-usgovva-argo` | `km-platform-dataservices` | discovered by Azure CLI | Export only |
+| `aks-datasvc-dev-usgovva-cyber` | `km-platform-dataservices` | discovered by Azure CLI | Export only |
+| `aks-datasvc-dev-usgovva-observability` | `km-platform-dataservices` | discovered by Azure CLI | Export only |
+| `aks-datasvc-dev-usgovva-shared` | `km-platform-dataservices` | discovered by Azure CLI | Export only |
+| `aks-datasvc-sbx-usgovva-shared` | `km-platform-dataservices` | discovered by Azure CLI | Export only |
 
 ## aks-paas-dev-usgovva-kites (hub)
 
