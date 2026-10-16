@@ -187,7 +187,7 @@ A good log ends with `data processing completed successfully` and a
 
 This batch contains five export-only clusters in the `km-platform-dataservices`
 subscription. The manifests use the existing shared UAMI
-`cost-analysis-identity-0` and the existing storage account; do not create another
+`cost-analysis-export-aks-paas-dev-usgovva-kites` UAMI and the existing storage account; do not create another
 storage account, identity, or merge job.
 
 ### Process: one cluster at a time
@@ -209,9 +209,9 @@ az login --scope https://management.core.usgovcloudapi.net//.default
 ```powershell
 $cluster = "aks-datasvc-dev-usgovva-argo"; $subscription = "km-platform-dataservices"
 $rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.enabled,oidcUrl:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:metricsProfile.costAnalysis.enabled}" -o json
 $issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
-az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+az identity federated-credential create --subscription 7707fc25-6678-4ed5-81f4-2f17eae1f636 -g rg-kites-test-usgovva-001 --identity-name cost-analysis-export-aks-paas-dev-usgovva-kites --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
 ```
 
 #### 2. aks-datasvc-dev-usgovva-cyber — Azure side
@@ -219,9 +219,9 @@ az identity federated-credential create --subscription bcd79275-fb23-4878-a697-b
 ```powershell
 $cluster = "aks-datasvc-dev-usgovva-cyber"; $subscription = "km-platform-dataservices"
 $rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.enabled,oidcUrl:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:metricsProfile.costAnalysis.enabled}" -o json
 $issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
-az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+az identity federated-credential create --subscription 7707fc25-6678-4ed5-81f4-2f17eae1f636 -g rg-kites-test-usgovva-001 --identity-name cost-analysis-export-aks-paas-dev-usgovva-kites --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
 ```
 
 #### 3. aks-datasvc-dev-usgovva-observability — Azure side
@@ -229,9 +229,9 @@ az identity federated-credential create --subscription bcd79275-fb23-4878-a697-b
 ```powershell
 $cluster = "aks-datasvc-dev-usgovva-observability"; $subscription = "km-platform-dataservices"
 $rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.enabled,oidcUrl:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:metricsProfile.costAnalysis.enabled}" -o json
 $issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
-az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+az identity federated-credential create --subscription 7707fc25-6678-4ed5-81f4-2f17eae1f636 -g rg-kites-test-usgovva-001 --identity-name cost-analysis-export-aks-paas-dev-usgovva-kites --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
 ```
 
 #### 4. aks-datasvc-dev-usgovva-shared — Azure side
@@ -239,9 +239,9 @@ az identity federated-credential create --subscription bcd79275-fb23-4878-a697-b
 ```powershell
 $cluster = "aks-datasvc-dev-usgovva-shared"; $subscription = "km-platform-dataservices"
 $rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.enabled,oidcUrl:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:metricsProfile.costAnalysis.enabled}" -o json
 $issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
-az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+az identity federated-credential create --subscription 7707fc25-6678-4ed5-81f4-2f17eae1f636 -g rg-kites-test-usgovva-001 --identity-name cost-analysis-export-aks-paas-dev-usgovva-kites --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
 ```
 
 #### 5. aks-datasvc-sbx-usgovva-shared — Azure side
@@ -249,9 +249,9 @@ az identity federated-credential create --subscription bcd79275-fb23-4878-a697-b
 ```powershell
 $cluster = "aks-datasvc-sbx-usgovva-shared"; $subscription = "km-platform-dataservices"
 $rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.enabled,oidcUrl:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:metricsProfile.costAnalysis.enabled}" -o json
 $issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
-az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+az identity federated-credential create --subscription 7707fc25-6678-4ed5-81f4-2f17eae1f636 -g rg-kites-test-usgovva-001 --identity-name cost-analysis-export-aks-paas-dev-usgovva-kites --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
 ```
 
 If the federated credential already exists, stop that block and list it before
