@@ -9,8 +9,10 @@ The supplied working list contained `hub-mgmt-test-aks` twice. This document rec
 
 - **Implemented** — the cost-analysis export solution is already deployed and tracked
   in this repository for the cluster.
-- **Prepared only** — a manifest exists for the cluster, but the Azure identity and/or
-  kube VDI deployment has not been completed.
+- **Prepared only** — a manifest exists for the cluster, but the kube VDI deployment
+  has not been completed; Azure-side identity preparation may already be complete.
+- **Prepared only — RBAC blocked** — Azure identity and manifest are ready, but the
+  attempted kube VDI deployment was denied by Azure Kubernetes RBAC.
 - **Not implemented** — the cluster is in the customer inventory, but this solution is
   not currently deployed there.
 
@@ -38,8 +40,8 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
 | `aks-datasvc-dev-usgovva-observability` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-dev-usgovva-aks-observability` | Prepared only | Disabled | Disabled | Enabled | Succeeded |
 | `aks-datasvc-dev-usgovva-shared` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-dev-usgovva-aks-shared` | Prepared only | Disabled | Disabled | Enabled | Succeeded |
 | `aks-datasvc-sbx-usgovva-shared` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-sbx-usgovva-aks-shared` | Prepared only | Enabled | Enabled | Enabled | Failed |
-| `aks-il5-team-dev-ugva-development` | `8f225e15-db94-4fa5-9f29-0669936b7b8a` | `rg-il5-team-dev-ugva-aks-development` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-il4dev-ugva-development` | `87418a88-0024-4a3a-a5c4-c9f91fc085e0` | `rg-il5-team-il4dev-ugva-aks-development` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-dev-ugva-development` | `8f225e15-db94-4fa5-9f29-0669936b7b8a` | `rg-il5-team-dev-ugva-aks-development` | Prepared only — RBAC blocked | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-il4dev-ugva-development` | `87418a88-0024-4a3a-a5c4-c9f91fc085e0` | `rg-il5-team-il4dev-ugva-aks-development` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4mgmt-ugva-management` | `4474c9a2-750a-4e26-a00d-9f0c8a66aadd` | `rg-il5-team-il4mgmt-ugva-aks-management` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4prod-ugva-production` | `c4e24366-bb01-4839-a037-69bedff4e013` | `rg-il5-team-il4prod-ugva-aks-production` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4stg-ugaz-staging` | `ab5409ac-1aca-4840-b084-33d1ffd20e46` | `rg-il5-team-il4stg-ugaz-aks-staging` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
@@ -91,8 +93,13 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
   `aksexports` container and federated to the export ServiceAccount. Its kube VDI
   deployment and export test have **not** happened yet: the kube VDI user's first
   apply was denied by Azure Kubernetes RBAC for the namespace, ServiceAccount,
-  `kube-system` Service, and CronJob. No namespace was created. The other four
-  proposed IL5/IL4 team clusters remain untouched.
+  `kube-system` Service, and CronJob. No namespace was created.
+- **1** IL4 development cluster (`aks-il5-team-il4dev-ugva-development`) has a
+  dedicated manifest prepared and its UAMI granted Storage Blob Data Contributor on
+  the `aksexports` container and federated to the export ServiceAccount. Deployment
+  has **not** been attempted. The kube VDI instructions require an Azure Kubernetes
+  RBAC permission check before applying; this cluster also has Azure RBAC enabled and
+  local AKS accounts disabled. The three remaining proposed IL4 clusters are untouched.
 - `aks-datasvc-sbx-usgovva-shared` reports `Failed` provisioning state and should not
   be changed until that state is understood.
 - The current solution uses Cost Analysis, so clusters marked Cost Analysis `Enabled`

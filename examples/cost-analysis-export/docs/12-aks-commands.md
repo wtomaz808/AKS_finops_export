@@ -419,6 +419,65 @@ cluster cannot pull the image, or the job fails, stop; do not proceed to another
 cluster. This workload has **not** been deployed from this workstation; the private
 cluster requires the kube VDI.
 
+## IL4 development (one cluster at a time)
+
+The Azure-side identity and container access for
+`aks-il5-team-il4dev-ugva-development` are prepared. **This is in the `km-il4-dev`
+subscription, not `km-il5-dev`.** As with the previous IL5 development cluster,
+Azure Kubernetes RBAC controls namespace and `kube-system` Service creation. Check
+permissions **before** applying. If either `kubectl auth can-i` returns `no`, stop:
+an authorized cluster administrator must deploy the manifest or arrange approved
+deployment access. Do not use `--admin` (local AKS accounts are disabled).
+
+On the kube VDI, pull the latest branch and sign in first:
+
+```powershell
+cd C:\dsop\aks_export\AKS_finops_export
+git pull origin cx_usecase
+az cloud set --name AzureUSGovernment
+az login --scope https://management.core.usgovcloudapi.net//.default
+```
+
+### aks-il5-team-il4dev-ugva-development — connect and check access
+
+Run this block only for this cluster. Check the context, confirm the Cost Analysis
+agent is `Running`, and **stop** if either permission check prints `no`:
+
+```powershell
+$cluster = "aks-il5-team-il4dev-ugva-development"
+az aks get-credentials --subscription 87418a88-0024-4a3a-a5c4-c9f91fc085e0 -g rg-il5-team-il4dev-ugva-aks-development -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl auth can-i create namespaces
+kubectl auth can-i create services -n kube-system
+```
+
+Only after both permission checks return `yes` and the agent is `Running`, apply the
+cluster-specific manifest. Run this stage separately and stop on any error:
+
+```powershell
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+```
+
+Verify the objects exist before creating a job:
+
+```powershell
+kubectl get namespace cost-analysis
+kubectl get cronjob aks-cost-analysis-export -n cost-analysis
+```
+
+Only if both objects exist, run the first export and check the output path:
+
+```powershell
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+The log must show `data processing completed successfully` and a path under
+`cost-analysis/aks-il5-team-il4dev-ugva-development/`. Do not continue to another
+cluster if authorization, scheduling, or export fails.
+
 ## Cluster summary
 
 | Cluster | Subscription | Resource group | Role |
