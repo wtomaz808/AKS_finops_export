@@ -190,106 +190,159 @@ subscription. The manifests use the existing shared UAMI
 `cost-analysis-identity-0` and the existing storage account; do not create another
 storage account, identity, or merge job.
 
-### Azure-side preparation
+### Process: one cluster at a time
 
-Run this on the Azure-capable environment. It discovers each resource group, verifies
-the required AKS features, and creates the per-cluster federated credential. The
-cluster resource groups are discovered rather than guessed from the cluster names.
+Do not run a loop or paste the whole batch. Complete the Azure-side block for one
+cluster, then move to that cluster's kube VDI block. Confirm the export succeeds before
+starting the next cluster. The resource group is discovered by Azure CLI so it is not
+assumed from the cluster name.
+
+Run once on the Azure-capable environment before the first block:
 
 ```powershell
-$subscription = "km-platform-dataservices"
-$identitySubscription = "bcd79275-fb23-4878-a697-bc967daa9100"
-$identityResourceGroup = "rg-aks-costanalysis-export"
-$identityName = "cost-analysis-identity-0"
-$clusters = @(
-  "aks-datasvc-dev-usgovva-argo",
-  "aks-datasvc-dev-usgovva-cyber",
-  "aks-datasvc-dev-usgovva-observability",
-  "aks-datasvc-dev-usgovva-shared",
-  "aks-datasvc-sbx-usgovva-shared"
-)
-
-foreach ($cluster in $clusters) {
-  $resourceGroup = az aks list --subscription $subscription `
-    --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-  if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-    throw "AKS cluster not found: $cluster"
-  }
-
-  az aks show --subscription $subscription -g $resourceGroup -n $cluster `
-    --query "{tier:sku.tier, oidc:oidcIssuerProfile.issuerUrl, workloadIdentity:securityProfile.workloadIdentity.enabled, costAnalysis:costAnalysis.enabled}" -o json
-
-  $issuer = az aks show --subscription $subscription -g $resourceGroup -n $cluster `
-    --query oidcIssuerProfile.issuerUrl -o tsv
-  if ([string]::IsNullOrWhiteSpace($issuer)) { throw "OIDC issuer is not enabled: $cluster" }
-
-  $credentialName = "cost-analysis-$cluster-export"
-  $existing = az identity federated-credential show `
-    --subscription $identitySubscription `
-    --resource-group $identityResourceGroup `
-    --identity-name $identityName `
-    --name $credentialName --query name -o tsv 2>$null
-  if ([string]::IsNullOrWhiteSpace($existing)) {
-    az identity federated-credential create `
-      --subscription $identitySubscription `
-      --resource-group $identityResourceGroup `
-      --identity-name $identityName `
-      --name $credentialName `
-      --issuer $issuer `
-      --subject "system:serviceaccount:cost-analysis:cost-analysis-export-sa" `
-      --audiences api://AzureADTokenExchange
-  } else {
-    Write-Host "Federated credential already exists: $credentialName"
-  }
-}
+az cloud set --name AzureUSGovernment
+az login --scope https://management.core.usgovcloudapi.net//.default
 ```
 
-The script is idempotent for credentials with the expected name. If an existing
-credential has the same name but a different issuer, stop and correct it rather than
-creating a second credential.
+#### 1. aks-datasvc-dev-usgovva-argo — Azure side
 
-### Kube VDI commands
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-argo"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+$issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
+az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+```
 
-Run on the kube VDI from the repository root after pulling the branch. The loop gets
-each resource group from Azure, switches credentials, verifies the context, confirms
-the Cost Analysis agent, applies only that cluster's manifest, and runs one export.
+#### 2. aks-datasvc-dev-usgovva-cyber — Azure side
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-cyber"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+$issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
+az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+```
+
+#### 3. aks-datasvc-dev-usgovva-observability — Azure side
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-observability"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+$issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
+az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+```
+
+#### 4. aks-datasvc-dev-usgovva-shared — Azure side
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-shared"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+$issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
+az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+```
+
+#### 5. aks-datasvc-sbx-usgovva-shared — Azure side
+
+```powershell
+$cluster = "aks-datasvc-sbx-usgovva-shared"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks show --subscription $subscription -g $rg -n $cluster --query "{tier:sku.tier,oidc:oidcIssuerProfile.issuerUrl,workloadIdentity:securityProfile.workloadIdentity.enabled,costAnalysis:costAnalysis.enabled}" -o json
+$issuer = az aks show --subscription $subscription -g $rg -n $cluster --query oidcIssuerProfile.issuerUrl -o tsv
+az identity federated-credential create --subscription bcd79275-fb23-4878-a697-bc967daa9100 -g rg-aks-costanalysis-export --identity-name cost-analysis-identity-0 --name "cost-analysis-$cluster-export" --issuer $issuer --subject system:serviceaccount:cost-analysis:cost-analysis-export-sa --audiences api://AzureADTokenExchange
+```
+
+If the federated credential already exists, stop that block and list it before
+continuing. Do not create a second credential with a different name.
+
+### Kube VDI commands — run one block at a time
+
+On the kube VDI, run the setup once:
 
 ```powershell
 cd C:\dsop\aks_export\AKS_finops_export
 git pull origin cx_usecase
 az cloud set --name AzureUSGovernment
 az login --scope https://management.core.usgovcloudapi.net//.default
-
-$subscription = "km-platform-dataservices"
-$clusters = @(
-  "aks-datasvc-dev-usgovva-argo",
-  "aks-datasvc-dev-usgovva-cyber",
-  "aks-datasvc-dev-usgovva-observability",
-  "aks-datasvc-dev-usgovva-shared",
-  "aks-datasvc-sbx-usgovva-shared"
-)
-
-foreach ($cluster in $clusters) {
-  $resourceGroup = az aks list --subscription $subscription `
-    --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
-  if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
-    throw "AKS cluster not found: $cluster"
-  }
-
-  az aks get-credentials --subscription $subscription -g $resourceGroup -n $cluster --overwrite-existing
-  if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context for $cluster" }
-
-  $agent = kubectl get pods -n kube-system -l app=cost-analysis-agent `
-    -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}'
-  if ([string]::IsNullOrWhiteSpace($agent)) { throw "Cost Analysis agent is not Running on $cluster" }
-
-  kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
-  kubectl delete job export-1 -n cost-analysis --ignore-not-found
-  kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
-  kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
-  kubectl logs -n cost-analysis job/export-1
-}
 ```
+
+Then paste exactly one cluster block, wait for the successful log, and only then use
+the next block. Each block has its own context check.
+
+#### aks-datasvc-dev-usgovva-argo
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-argo"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks get-credentials --subscription $subscription -g $rg -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+#### aks-datasvc-dev-usgovva-cyber
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-cyber"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks get-credentials --subscription $subscription -g $rg -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+#### aks-datasvc-dev-usgovva-observability
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-observability"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks get-credentials --subscription $subscription -g $rg -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+#### aks-datasvc-dev-usgovva-shared
+
+```powershell
+$cluster = "aks-datasvc-dev-usgovva-shared"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks get-credentials --subscription $subscription -g $rg -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+#### aks-datasvc-sbx-usgovva-shared
+
+```powershell
+$cluster = "aks-datasvc-sbx-usgovva-shared"; $subscription = "km-platform-dataservices"
+$rg = az aks list --subscription $subscription --query "[?name=='$cluster'].resourceGroup | [0]" -o tsv
+az aks get-credentials --subscription $subscription -g $rg -n $cluster --overwrite-existing
+if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
+kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
+kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
+kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
+kubectl logs -n cost-analysis job/export-1
+```
+
+Use a new Job name such as `export-2` if `export-1` already exists; do not delete an
+existing Job unless you are deliberately rerunning that cluster.
 
 A successful run must end with `data processing completed successfully` and write to
 `cost-analysis/<cluster>/export-<date>.csv`. The five manifests are:
