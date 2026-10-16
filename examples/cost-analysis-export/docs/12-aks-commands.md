@@ -361,23 +361,29 @@ UAMI has a federated credential for `cost-analysis-export-sa` and Storage Blob D
 Contributor on the `aksexports` container. Confirm agent health and the target context
 before deploying the manifest from the kube VDI.
 
+First, on the kube VDI, update the repository and sign in:
+
 ```powershell
 cd C:\dsop\aks_export\AKS_finops_export
 git pull origin cx_usecase
 az cloud set --name AzureUSGovernment
 az login --scope https://management.core.usgovcloudapi.net//.default
+```
+
+Then copy and paste **this cluster's block only**, one command at a time as with the
+earlier clusters. Check that the agent pod says `Running` before the `kubectl apply`
+command; if it does not, **stop**. If any command fails, stop rather than continuing.
+
+### aks-il5-team-dev-ugva-development
+
+```powershell
 $cluster = "aks-il5-team-dev-ugva-development"
 az aks get-credentials --subscription 8f225e15-db94-4fa5-9f29-0669936b7b8a -g rg-il5-team-dev-ugva-aks-development -n $cluster --overwrite-existing
-if ($LASTEXITCODE -ne 0) { throw "Could not get credentials for $cluster" }
 if ((kubectl config current-context) -ne $cluster) { throw "Wrong kubectl context" }
-$agentPods = kubectl get pods -n kube-system -l app=cost-analysis-agent -o json | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0 -or -not @($agentPods.items | Where-Object { $_.status.phase -eq "Running" }).Count) { throw "Cost Analysis agent is not Running; stop" }
+kubectl get pods -n kube-system -l app=cost-analysis-agent
 kubectl apply -f examples/cost-analysis-export/clusters/$cluster/kube.yaml
-if ($LASTEXITCODE -ne 0) { throw "Apply failed; stop" }
 kubectl create job --from=cronjob/aks-cost-analysis-export export-1 -n cost-analysis
-if ($LASTEXITCODE -ne 0) { throw "Job creation failed; stop" }
 kubectl wait --for=condition=complete job/export-1 -n cost-analysis --timeout=300s
-if ($LASTEXITCODE -ne 0) { throw "Job did not complete; check pod events" }
 kubectl logs -n cost-analysis job/export-1
 ```
 
