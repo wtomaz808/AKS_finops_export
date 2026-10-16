@@ -38,7 +38,7 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
 | `aks-datasvc-dev-usgovva-observability` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-dev-usgovva-aks-observability` | Prepared only | Disabled | Disabled | Enabled | Succeeded |
 | `aks-datasvc-dev-usgovva-shared` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-dev-usgovva-aks-shared` | Prepared only | Disabled | Disabled | Enabled | Succeeded |
 | `aks-datasvc-sbx-usgovva-shared` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-sbx-usgovva-aks-shared` | Prepared only | Enabled | Enabled | Enabled | Failed |
-| `aks-il5-team-dev-ugva-development` | `8f225e15-db94-4fa5-9f29-0669936b7b8a` | `rg-il5-team-dev-ugva-aks-development` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-dev-ugva-development` | `8f225e15-db94-4fa5-9f29-0669936b7b8a` | `rg-il5-team-dev-ugva-aks-development` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4dev-ugva-development` | `87418a88-0024-4a3a-a5c4-c9f91fc085e0` | `rg-il5-team-il4dev-ugva-aks-development` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4mgmt-ugva-management` | `4474c9a2-750a-4e26-a00d-9f0c8a66aadd` | `rg-il5-team-il4mgmt-ugva-aks-management` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4prod-ugva-production` | `c4e24366-bb01-4839-a037-69bedff4e013` | `rg-il5-team-il4prod-ugva-aks-production` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
@@ -86,6 +86,11 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
   `aks-datasvc-dev-usgovva-argo`, `aks-datasvc-dev-usgovva-cyber`,
   `aks-datasvc-dev-usgovva-observability`, `aks-datasvc-dev-usgovva-shared`, and
   `aks-datasvc-sbx-usgovva-shared`.
+- **1** IL5 team cluster (`aks-il5-team-dev-ugva-development`) has a dedicated
+  manifest prepared and its UAMI granted Storage Blob Data Contributor on the
+  `aksexports` container and federated to the export ServiceAccount. Its kube VDI
+  deployment and export test have **not** happened yet. The other four proposed
+  IL5/IL4 team clusters remain untouched.
 - `aks-datasvc-sbx-usgovva-shared` reports `Failed` provisioning state and should not
   be changed until that state is understood.
 - The current solution uses Cost Analysis, so clusters marked Cost Analysis `Enabled`
