@@ -429,6 +429,28 @@ permissions **before** applying. If either `kubectl auth can-i` returns `no`, st
 an authorized cluster administrator must deploy the manifest or arrange approved
 deployment access. Do not use `--admin` (local AKS accounts are disabled).
 
+**Current blocker:** the kube VDI cannot resolve this private cluster's API hostname.
+The Azure private DNS zone contains the cluster's A record (`10.97.168.4`) and is
+linked to the cluster VNet; this does not prove the kube VDI uses a DNS server that
+forwards to the zone or has a route to the API. `kubectl config current-context`
+only reads the local kubeconfig: it does **not** verify connectivity. No manifest
+has been applied to this cluster. Before the Kubernetes commands below, check DNS
+on the kube VDI and have the network/DNS team fix the VDI resolver/path if needed:
+
+```powershell
+Resolve-DnsName aks-il5-team-il4dev-ugva-development.privatelink.usgovvirginia.cx.aks.containerservice.azure.us
+```
+
+If that fails, **stop**; do not run `kubectl apply` or try to change the cluster's
+private networking. After DNS resolves to a private IP, confirm TCP 443 connectivity
+before testing Kubernetes RBAC.
+
+```powershell
+Test-NetConnection aks-il5-team-il4dev-ugva-development.privatelink.usgovvirginia.cx.aks.containerservice.azure.us -Port 443
+```
+
+Only continue if `TcpTestSucceeded` is `True`.
+
 On the kube VDI, pull the latest branch and sign in first:
 
 ```powershell
