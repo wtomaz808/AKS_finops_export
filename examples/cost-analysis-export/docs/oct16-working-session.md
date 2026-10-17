@@ -10,7 +10,8 @@ worked today were:
 - `aks-il5-team-il4dev-ugva-development`
 
 The existing 12-cluster implementation was not changed. No application workloads were
-restarted, and no AKS add-on changes were made during the IL5/IL4 rollout work.
+restarted, and no AKS add-on changes were made during the rollout of the listed
+`aks-il5-team-*` and `aks-datasvc-*` clusters.
 
 ## What succeeded
 
@@ -21,10 +22,11 @@ restarted, and no AKS add-on changes were made during the IL5/IL4 rollout work.
   [13-aks-resource-addons.md](13-aks-resource-addons.md).
 - Updated [12-aks-commands.md](12-aks-commands.md) to use individual copy/paste blocks
   rather than loops or scripts on the kube VDI.
-- Added cluster-specific manifests for the two IL5/IL4 development clusters.
+- Added cluster-specific manifests for `aks-il5-team-dev-ugva-development` and
+  `aks-il5-team-il4dev-ugva-development`.
 - Kept the remaining clusters untouched.
 
-### Azure-side preparation: IL5 development
+### Azure-side preparation: `aks-il5-team-dev-ugva-development`
 
 Cluster: `aks-il5-team-dev-ugva-development`
 
@@ -42,7 +44,7 @@ Cluster: `aks-il5-team-dev-ugva-development`
   `system:serviceaccount:cost-analysis:cost-analysis-export-sa`.
 - Verified the kubelet already had registry pull access for the pinned export image.
 
-### Azure-side preparation: IL4 development
+### Azure-side preparation: `aks-il5-team-il4dev-ugva-development`
 
 Cluster: `aks-il5-team-il4dev-ugva-development`
 
@@ -60,9 +62,71 @@ Cluster: `aks-il5-team-il4dev-ugva-development`
   `system:serviceaccount:cost-analysis:cost-analysis-export-sa`.
 - Verified the kubelet already had registry pull access for the pinned export image.
 
+### `aks-datasvc-dev-usgovva-argo`
+
+- Customer cost-analysis UAMI found:
+  `cost-analysis-aks-datasvc-dev-usgovva-argo`.
+- UAMI resource group: `rg-datasvc-dev-usgovva-cluster-argo`.
+- The cluster reports OIDC, Workload Identity, and Cost Analysis enabled.
+- Provisioning state is `Succeeded`.
+- No Storage Blob Data Contributor assignment was found for this customer UAMI.
+- No federated credential was found on this customer UAMI.
+- No kube VDI deployment was attempted.
+- An earlier exploratory federated credential was mistakenly created on the shared hub
+  UAMI instead of this customer UAMI. It remains a cleanup item.
+
+### `aks-datasvc-dev-usgovva-cyber`
+
+- Customer cost-analysis UAMI found:
+  `cost-analysis-aks-datasvc-dev-usgovva-cyber`.
+- UAMI resource group: `rg-datasvc-dev-usgovva-cluster-cyber`.
+- Cost Analysis is enabled, but OIDC and Workload Identity are disabled.
+- Provisioning state is `Succeeded`.
+- No Storage Blob Data Contributor assignment was found for this customer UAMI.
+- No federated credential was found on this customer UAMI.
+- No Azure or kube VDI changes were made.
+
+### `aks-datasvc-dev-usgovva-observability`
+
+- Customer cost-analysis UAMI found:
+  `cost-analysis-aks-datasvc-dev-usgovva-observability`.
+- UAMI resource group: `rg-datasvc-dev-usgovva-cluster-observability`.
+- Cost Analysis is enabled, but OIDC and Workload Identity are disabled.
+- Provisioning state is `Succeeded`.
+- No Storage Blob Data Contributor assignment was found for this customer UAMI.
+- No federated credential was found on this customer UAMI.
+- No Azure or kube VDI changes were made.
+
+### `aks-datasvc-dev-usgovva-shared`
+
+- Customer cost-analysis UAMI found:
+  `cost-analysis-aks-datasvc-dev-usgovva-shared`.
+- UAMI resource group: `rg-datasvc-dev-usgovva-cluster-shared`.
+- Cost Analysis is enabled, but OIDC and Workload Identity are disabled.
+- Provisioning state is `Succeeded`.
+- No Storage Blob Data Contributor assignment was found for this customer UAMI.
+- No federated credential was found on this customer UAMI.
+- No Azure or kube VDI changes were made.
+
+### `aks-datasvc-sbx-usgovva-shared`
+
+- Customer cost-analysis UAMI found:
+  `cost-analysis-aks-datasvc-sbx-usgovva-shared`.
+- UAMI resource group: `rg-datasvc-sbx-usgovva-cluster-shared`.
+- OIDC, Workload Identity, and Cost Analysis are enabled.
+- The cluster reports `Failed` provisioning state and remains paused.
+- No Storage Blob Data Contributor assignment was found for this customer UAMI.
+- No federated credential was found on this customer UAMI.
+- No Azure or kube VDI changes were made.
+
+The existing prepared manifests for these five Data Services clusters still reference
+the earlier shared hub-UAMI client ID. They are **not deployment-ready** under the
+customer per-cluster UAMI pattern and must be updated with the matching customer
+client IDs before any of these clusters is deployed.
+
 ## What did not succeed
 
-### IL5 development: Kubernetes RBAC blocked the apply
+### `aks-il5-team-dev-ugva-development`: Kubernetes RBAC blocked the apply
 
 The kube VDI successfully obtained credentials and reached the cluster. The Cost
 Analysis agent was healthy at `3/3 Running`.
@@ -79,7 +143,7 @@ disabled. The current kube VDI user can authenticate and read resources, but doe
 have sufficient Kubernetes write permissions. The `cost-analysis` namespace was not
 created, and no export Job ran.
 
-### IL4 development: private DNS blocked access before Kubernetes RBAC
+### `aks-il5-team-il4dev-ugva-development`: private DNS blocked access before Kubernetes RBAC
 
 The kube VDI context was correctly set to:
 
@@ -110,7 +174,7 @@ manifest was not applied.
 
 ## Issues discovered
 
-### 1. Kube VDI Azure Kubernetes RBAC access
+### 1. Kube VDI Azure Kubernetes RBAC access for `aks-il5-team-dev-ugva-development`
 
 The deployment identity needs approved Azure Kubernetes RBAC permissions to create:
 
@@ -122,9 +186,10 @@ A namespace-only writer role is insufficient because the manifest also creates a
 Service in `kube-system`. Do not use `--admin`; local accounts are disabled on these
 clusters.
 
-### 2. Private AKS DNS resolution
+### 2. Private AKS DNS resolution for `aks-il5-team-il4dev-ugva-development`
 
-The IL4 development kube VDI cannot resolve the private API endpoint. The DNS/network
+The kube VDI cannot resolve the private API endpoint for
+`aks-il5-team-il4dev-ugva-development`. The DNS/network
 team must provide forwarding or another approved DNS path for:
 
 `privatelink.usgovvirginia.cx.aks.containerservice.azure.us`
@@ -143,13 +208,14 @@ The rollout was corrected to use one customer-provided cost-analysis UAMI per cl
 located in the supporting cluster resource group. New clusters must not use the shared
 hub UAMI.
 
-An earlier exploratory argo federated credential was added to the shared hub UAMI. It
-should be reviewed and removed after the customer-specific argo UAMI federation is
-confirmed, to avoid leaving an unnecessary trust relationship.
+An earlier exploratory federated credential for
+`aks-datasvc-dev-usgovva-argo` was added to the shared hub UAMI. It should be reviewed
+and removed after the customer-specific `aks-datasvc-dev-usgovva-argo` UAMI federation
+is confirmed, to avoid leaving an unnecessary trust relationship.
 
 ## Next steps
 
-### IL5 development
+### `aks-il5-team-dev-ugva-development`
 
 1. Have the customer grant the kube VDI deployment user approved Azure Kubernetes RBAC
    write access for this cluster, or have an authorized cluster administrator perform
@@ -161,7 +227,7 @@ confirmed, to avoid leaving an unnecessary trust relationship.
 6. Run `export-1` and confirm the success log and cluster-specific blob path.
 7. Do not proceed to another cluster until this validation succeeds.
 
-### IL4 development
+### `aks-il5-team-il4dev-ugva-development`
 
 1. Ask the network/DNS team to correct forwarding from the kube VDI to the Azure private
    DNS zone.
@@ -173,11 +239,10 @@ confirmed, to avoid leaving an unnecessary trust relationship.
 6. Verify the namespace and CronJob before creating the export Job.
 7. Run the export and validate the log and storage path.
 
-### Remaining IL5/IL4 clusters
+### `aks-datasvc-dev-usgovva-argo`, `aks-datasvc-dev-usgovva-cyber`, `aks-datasvc-dev-usgovva-observability`, `aks-datasvc-dev-usgovva-shared`, and `aks-datasvc-sbx-usgovva-shared`
 
-Do not prepare or deploy the remaining three team clusters until the two current
-blockers are resolved and the first successful export is recorded. Continue using the
-same sequence:
+Do not prepare or deploy these five clusters until their listed prerequisites and
+identity permissions are resolved. Continue using the same sequence:
 
 1. Verify the cluster and customer UAMI.
 2. Verify Cost Analysis, OIDC, and Workload Identity.
