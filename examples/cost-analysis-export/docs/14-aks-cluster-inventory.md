@@ -44,14 +44,14 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
 | `aks-datasvc-sbx-usgovva-shared` | `bf7a7fd5-0bad-4232-bbe1-a14a42c74412` | `rg-datasvc-sbx-usgovva-aks-shared` | Prepared only | Enabled | Enabled | Enabled | Failed |
 | `aks-il5-team-dev-ugva-development` | `8f225e15-db94-4fa5-9f29-0669936b7b8a` | `rg-il5-team-dev-ugva-aks-development` | Prepared only — RBAC blocked | Enabled | Enabled | Enabled | Succeeded |
 | `aks-il5-team-il4dev-ugva-development` | `87418a88-0024-4a3a-a5c4-c9f91fc085e0` | `rg-il5-team-il4dev-ugva-aks-development` | Prepared only — DNS blocked | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-il4mgmt-ugva-management` | `4474c9a2-750a-4e26-a00d-9f0c8a66aadd` | `rg-il5-team-il4mgmt-ugva-aks-management` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-il4prod-ugva-production` | `c4e24366-bb01-4839-a037-69bedff4e013` | `rg-il5-team-il4prod-ugva-aks-production` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-il4stg-ugaz-staging` | `ab5409ac-1aca-4840-b084-33d1ffd20e46` | `rg-il5-team-il4stg-ugaz-aks-staging` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-il4svcs-ugva-services` | `843b4da0-f7a6-4f47-b6a2-d812c49ff3e7` | `rg-il5-team-il4svcs-ugva-aks-services` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-mgmt-ugva-management` | `f616ec0a-c8b7-451a-b119-90ee96d716db` | `rg-il5-team-mgmt-ugva-aks-management` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-prod-ugva-production` | `a2d90e08-c6f6-4458-a055-5f5bbfad357e` | `rg-il5-team-prod-ugva-aks-production` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-stage-ugva-staging` | `c1445365-76a9-4a50-b5b8-1570c8416c49` | `rg-il5-team-stage-ugva-aks-staging` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
-| `aks-il5-team-svcs-ugva-services` | `e8574b94-17f5-46a4-b313-1127c8201efb` | `rg-il5-team-svcs-ugva-aks-services` | Not implemented | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-il4mgmt-ugva-management` | `4474c9a2-750a-4e26-a00d-9f0c8a66aadd` | `rg-il5-team-il4mgmt-ugva-aks-management` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-il4prod-ugva-production` | `c4e24366-bb01-4839-a037-69bedff4e013` | `rg-il5-team-il4prod-ugva-aks-production` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-il4stg-ugaz-staging` | `ab5409ac-1aca-4840-b084-33d1ffd20e46` | `rg-il5-team-il4stg-ugaz-aks-staging` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-il4svcs-ugva-services` | `843b4da0-f7a6-4f47-b6a2-d812c49ff3e7` | `rg-il5-team-il4svcs-ugva-aks-services` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-mgmt-ugva-management` | `f616ec0a-c8b7-451a-b119-90ee96d716db` | `rg-il5-team-mgmt-ugva-aks-management` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-prod-ugva-production` | `a2d90e08-c6f6-4458-a055-5f5bbfad357e` | `rg-il5-team-prod-ugva-aks-production` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-stage-ugva-staging` | `c1445365-76a9-4a50-b5b8-1570c8416c49` | `rg-il5-team-stage-ugva-aks-staging` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
+| `aks-il5-team-svcs-ugva-services` | `e8574b94-17f5-46a4-b313-1127c8201efb` | `rg-il5-team-svcs-ugva-aks-services` | Prepared only | Enabled | Enabled | Enabled | Succeeded |
 | `aks-iris-dev-usgovva-devtest` | `d1649186-f212-40fe-8572-0a45f3a2713b` | `rg-iris-dev-usgovva-aks-devtest` | Not implemented | Disabled | Disabled | Disabled | Succeeded |
 | `aks-iris-dev-usgovva-integration` | `d1649186-f212-40fe-8572-0a45f3a2713b` | `rg-iris-dev-usgovva-aks-integration` | Not implemented | Disabled | Disabled | Disabled | Succeeded |
 | `aks-iris-dev-usgovva-play` | `d1649186-f212-40fe-8572-0a45f3a2713b` | `rg-iris-dev-usgovva-aks-play` | Not implemented | Disabled | Disabled | Disabled | Succeeded |
@@ -102,8 +102,11 @@ expose the current `metricsProfile.costAnalysis.enabled` field correctly.
   has **not** been attempted. The kube VDI cannot resolve this cluster's private API
   hostname; the private DNS A record exists in Azure. Fix the VDI DNS/network path
   before testing Azure Kubernetes RBAC or applying anything. This cluster also has
-  Azure RBAC enabled and local AKS accounts disabled. The three remaining proposed
-  IL4 clusters are untouched.
+  Azure RBAC enabled and local AKS accounts disabled.
+- **8** additional team clusters were Azure-prepared in the next batch and now have
+  customer UAMIs, storage blob permissions, and exact federated credentials for the
+  export ServiceAccount. Their manifest files are in the repository, but each one still
+  needs kube VDI validation and export-job execution before it is considered deployed.
 - `aks-datasvc-sbx-usgovva-shared` reports `Failed` provisioning state and should not
   be changed until that state is understood.
 - The current solution uses Cost Analysis, so clusters marked Cost Analysis `Enabled`
