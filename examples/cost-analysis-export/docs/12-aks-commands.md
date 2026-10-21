@@ -24,6 +24,41 @@ If a pod stays `Pending`, run `kubectl describe pod -n cost-analysis <pod>` and 
 events. If `az aks get-credentials` fails, see
 [Troubleshooting](#troubleshooting).
 
+## Azure-side preflight: verify kubelet can pull from ACR
+
+Before any cluster manifest is applied, verify the cluster's kubelet identity has the
+image-pull rights at the registry. This is separate from the workload identity UAMI
+used by the pod for Azure storage access.
+
+Run this block for the cluster you are about to deploy. If the kubelet identity does not
+show `AcrPull`, stop and fix the ACR role before any `kubectl apply`.
+
+```powershell
+$cluster = "aks-il5-team-dev-ugva-development"
+$subscription = "8f225e15-db94-4fa5-9f29-0669936b7b8a"
+$aksResourceGroup = "rg-il5-team-dev-ugva-aks-development"
+$acrSubscription = "bd4a0538-88f5-47ed-8ac3-a43ee9ad9862"
+$acrResourceGroup = "rg-il5-team-prd-ugva-acr"
+$acrName = "craksprodusgovva"
+
+$kubeletObjectId = az aks show --subscription $subscription -g $aksResourceGroup -n $cluster --query 'identityProfile.kubeletidentity.objectId' -o tsv
+$acrScope = "/subscriptions/$acrSubscription/resourceGroups/$acrResourceGroup/providers/Microsoft.ContainerRegistry/registries/$acrName"
+
+az role assignment list --scope $acrScope --include-inherited --query "[?principalId=='$kubeletObjectId'].{principalId:principalId,role:roleDefinitionName,scope:scope}" -o table
+az acr show --subscription $acrSubscription -g $acrResourceGroup -n $acrName --query "{name:name,publicNetworkAccess:publicNetworkAccess,networkRuleSet:networkRuleSet.defaultAction,adminUserEnabled:adminUserEnabled}" -o json
+```
+
+Expected result:
+
+- the kubelet identity has a row with `AcrPull`
+- the registry is reachable by the cluster network path (`publicNetworkAccess` is
+  `Disabled` is acceptable when the cluster has private access)
+- if either check fails, stop and fix the node/image-pull path before applying the
+  workload manifest
+
+The workload identity UAMI is not the one that authorizes pulling the image. The AKS
+kubelet identity is the component that performs registry pulls.
+
 ## Atlas clusters: re-run the export now
 
 Copy and paste one block at a time on the kubectl VDI, from the repo root
