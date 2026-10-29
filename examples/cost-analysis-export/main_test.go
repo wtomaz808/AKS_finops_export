@@ -64,6 +64,44 @@ func TestApp_ProcessWithRealData(t *testing.T) {
 	assert.Greater(t, len(lines[1]), 1000, "expect to have more than 1000 characters of data")
 }
 
+func TestApp_Process_ArchivesMonthlyResult(t *testing.T) {
+	date := time.Date(2025, 6, 17, 0, 0, 0, 0, time.UTC)
+	cfg := Config{
+		CostAnalysisURL: StartServer(t, loadTestFile(t, "testdata/cost-analysis.json")),
+		AzureStorageConnectionString: SetupAzuriteContainer(t, "test-archive-container", map[string][]byte{
+			"cost-management/file1.csv": loadTestFile(t, "testdata/cost-management-export.csv"),
+		}),
+		AzureStorageContainerName:       "test-archive-container",
+		AzureStorageAKSDataPrefix:       "cost-analysis/",
+		AzureStorageCostExportPrefix:    "cost-management/",
+		AzureStorageResultFile:          "cost-analysis/result.csv",
+		AzureStorageResultArchivePrefix: "cost-analysis/archive/",
+		SQLiteFilePath:                  "test-archive.sqlite",
+		ExportDate:                      &date,
+	}
+
+	app, err := NewApp(cfg)
+	require.NoError(t, err)
+	err = app.Process(context.Background())
+	require.NoError(t, err)
+
+	// The "latest" convenience copy is written to AzureStorageResultFile.
+	latest := downloadResult(t, app)
+
+	// The same content should also land under this month's dated archive folder.
+	archivePath, err := app.resultArchivePath()
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("cost-analysis/archive/%s/result.csv", time.Now().UTC().Format("2006-01")), archivePath)
+
+	response, err := app.BlobClient.DownloadStream(context.Background(), app.Config.AzureStorageContainerName, archivePath, nil)
+	require.NoError(t, err, "failed to download archived result blob")
+	defer func() { _ = response.Body.Close() }()
+	archived, err := io.ReadAll(response.Body)
+	require.NoError(t, err, "failed to read archived blob content")
+
+	assert.Equal(t, latest, archived, "archived result should match the latest convenience copy")
+}
+
 func TestApp_Process(t *testing.T) {
 	type testData struct {
 		name            string

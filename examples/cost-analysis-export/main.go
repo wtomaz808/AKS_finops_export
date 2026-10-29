@@ -42,8 +42,12 @@ type Config struct {
 	AzureStorageAKSDataPrefix    string        `env:"AZURE_STORAGE_AKS_DATA_PREFIX" envDefault:"cost-analysis/"`
 	AzureStorageCostExportPrefix string        `env:"AZURE_STORAGE_COST_EXPORT_PREFIX" envDefault:"cost-management/"`
 	AzureStorageResultFile       string        `env:"AZURE_STORAGE_RESULT_FILE" envDefault:"cost-analysis/result.csv"`
-	SQLiteFilePath               string        `env:"SQLITE_FILE_PATH"`
-	ExportDate                   *time.Time    `env:"EXPORT_DATE" envDefault:""`
+	// AzureStorageResultArchivePrefix is where each month's merged result is preserved, so
+	// re-running the merge never overwrites a prior month. Each run uploads to
+	// <prefix><YYYY-MM>/<result file name>, in addition to the "latest" AzureStorageResultFile.
+	AzureStorageResultArchivePrefix string     `env:"AZURE_STORAGE_RESULT_ARCHIVE_PREFIX" envDefault:"cost-analysis/archive/"`
+	SQLiteFilePath                  string     `env:"SQLITE_FILE_PATH"`
+	ExportDate                      *time.Time `env:"EXPORT_DATE" envDefault:""`
 
 	// Month-to-date Cost Management exports write a new file each run that repeats the whole
 	// period, so importing every file counts each day's cost once per run. Keep only the newest
@@ -196,6 +200,9 @@ func (c *Config) Validate() error {
 	}
 	if c.AzureStorageCostExportPrefix != "" && !strings.HasSuffix(c.AzureStorageCostExportPrefix, "/") {
 		c.AzureStorageCostExportPrefix += "/"
+	}
+	if c.AzureStorageResultArchivePrefix != "" && !strings.HasSuffix(c.AzureStorageResultArchivePrefix, "/") {
+		c.AzureStorageResultArchivePrefix += "/"
 	}
 	return nil
 }
@@ -547,17 +554,44 @@ func (a *App) joinAndExportData(ctx context.Context) error {
 	slog.Info("data joined successfully", "file", file.Name())
 
 	contentType := "text/csv"
-	_, err = a.BlobClient.UploadFile(ctx, a.Config.AzureStorageContainerName, a.Config.AzureStorageResultFile, file, &azblob.UploadFileOptions{
+	uploadOpts := &azblob.UploadFileOptions{
 		HTTPHeaders: &blob.HTTPHeaders{
 			BlobContentType: &contentType,
 		},
-	})
-	if err != nil {
-		return fmt.Errorf("uploading joined data to blob: %w", err)
 	}
-	slog.Info("joined data uploaded successfully", "blob_name", a.Config.AzureStorageResultFile)
+
+	// Archive this month's result under a dated folder first, so every month's merged
+	// result is preserved. The "latest" copy below is overwritten on every run, but the
+	// archive path is unique per month and never rewritten by a later month's run.
+	archivePath, err := a.resultArchivePath()
+	if err != nil {
+		return fmt.Errorf("building result archive path: %w", err)
+	}
+
+	if _, err := a.BlobClient.UploadFile(ctx, a.Config.AzureStorageContainerName, archivePath, file, uploadOpts); err != nil {
+		return fmt.Errorf("uploading archived result to blob: %w", err)
+	}
+	slog.Info("archived result uploaded successfully", "blob_name", archivePath)
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("seeking to beginning for latest result upload: %w", err)
+	}
+
+	if _, err := a.BlobClient.UploadFile(ctx, a.Config.AzureStorageContainerName, a.Config.AzureStorageResultFile, file, uploadOpts); err != nil {
+		return fmt.Errorf("uploading latest result to blob: %w", err)
+	}
+	slog.Info("latest result uploaded successfully", "blob_name", a.Config.AzureStorageResultFile)
 
 	return nil
+}
+
+// resultArchivePath returns this month's archive path for the merged result, for example
+// "cost-analysis/archive/2026-10/result.csv". The file name matches AzureStorageResultFile's
+// base name so a custom result file name is reflected in the archive too.
+func (a *App) resultArchivePath() (string, error) {
+	monthFolder := time.Now().UTC().Format("2006-01")
+	fileName := path.Base(a.Config.AzureStorageResultFile)
+	return url.JoinPath(a.Config.AzureStorageResultArchivePrefix, monthFolder, fileName)
 }
 
 type AKSData struct {
