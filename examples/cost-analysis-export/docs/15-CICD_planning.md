@@ -129,6 +129,21 @@ pipeline-level variable, not hardcoded per cluster manifest — avoids re-litiga
 under `cost-analysis/archive/<YYYY-MM>/result.csv`, built and pushed via
 `az acr build --registry craksprodusgovva`.)
 
+**Always pin an explicit tag — never `:latest`.** `kubectl`/Terraform treat `:latest`
+as a non-changing string, so a new image push doesn't trigger a redeploy without a
+manual rollout restart, and there's no way to audit what's actually running on a given
+cluster at a point in time. Pinned tags give clean `git revert`-based rollback and a
+clear audit trail for IL4/prod/mgmt-tier approvals in Batch 3.
+
+**Known drift as of 2026-10-30**: all 27 export-only `kube.yaml` manifests in this repo
+were bumped from `1.2.0` to `1.3.0` ahead of the pipeline being ready (commit
+`499b43ed`), so git now reflects the fleet target state, but most live clusters are
+still running whatever was last manually applied (mostly `1.2.0`; the hub
+`aks-paas-dev-usgovva-kites` is the only one already running `1.3.0` in production).
+The pipeline's first real apply run against each cluster will therefore double as an
+image upgrade, not just a config sync — call this out explicitly before Batch 1 starts
+so it isn't mistaken for a pipeline bug.
+
 ## 4. Rollout ordering (risk-based batching)
 
 1. **Batch 1 (lowest risk)** — the 13 already-"Prepared only" clusters, minus the 2
