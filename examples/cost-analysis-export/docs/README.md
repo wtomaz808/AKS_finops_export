@@ -43,6 +43,7 @@ for the specific gotchas found along the way).
 | [11-exported-data-next-steps.md](11-exported-data-next-steps.md) | FinOps and Power BI handoff, data modeling, quality checks, retention, and production-readiness decisions |
 | [12-aks-commands.md](12-aks-commands.md) | Per-cluster connection and kubectl commands for the hub and every export-only cluster |
 | [15-CICD_planning.md](15-CICD_planning.md) | GitLab repo/pipeline planning for fleet-wide automated rollout to the remaining clusters |
+| [16-aks-export-merge-sched.md](16-aks-export-merge-sched.md) | Export/merge CronJob schedule, how the daily merge works, and which clusters currently report |
 
 ## Choosing a deployment path
 
